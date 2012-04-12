@@ -43,20 +43,46 @@ class Git(object):
     def create_branch(self, name, push=True):
         """Create the given branch name.
 
-        :param name: The name of the branch to checkout.
+        :param name: The name of the branch to create.
         :param push: Default `True`. Determine whether to push to remote.
         """
+        command = ["git", "checkout", "-b", str(name)]
+
         try:
-            command = ["git", "checkout", "-b", str(name)]
             ret_val = self.repo.git.execute(command)
         except GitCommandError:
-            command = ["git", "checkout", str(name)]
-            ret_val = self.repo.git.execute(command)
+            ret_val = self.get_branch(name)
 
         if push:
-            remote = self.repo.remotes.origin
-            command = ["git", "push", remote.name, self.branch.name]
-            self.repo.git.execute(command)
+            self.push_branch()
+
+        return ret_val
+
+    def delete_branch(self, name):
+        """Delete the given branch name.
+
+        :param name: The name of the branch to delete.
+        """
+        command = ["git", "branch", "-d", str(name)]
+
+        try:
+            ret_val = self.repo.git.execute(command)
+        except GitCommandError:
+            raise GitException(), None, exc_info()[2]
+
+        return ret_val
+
+    def get_branch(self, name):
+        """Get the given branch name.
+
+        :param name: The name of the branch to checkout.
+        """
+        command = ["git", "checkout", str(name)]
+
+        try:
+            ret_val = self.repo.git.execute(command)
+        except GitCommandError:
+            raise GitException("Invalid branch"), None, exc_info()[2]
 
         return ret_val
 
@@ -75,6 +101,44 @@ class Git(object):
             ret_val = None
 
         return ret_val
+
+    def merge_branch(self, name=None, message=None):
+        """Merge the current branch into the given branch name.
+
+        :param name: Default `None`. The name of the branch to merge into.
+        :param message: Default `None`. An optional message to prepend to the
+            merge message.
+        """
+        commit = self.branch.name
+        self.get_branch(name or "master")
+
+        if message:
+            message = "{0} Merge branch '{1}' into {2}".format(message,
+                    commit, self.branch.name)
+            command = ["git", "merge", "--no-ff", "-m", message, commit]
+        else:
+            command = ["git", "merge", commit]
+
+        return self.repo.git.execute(command)
+
+    def push_branch(self, name=None):
+        """Push the given branch name.
+
+        :param name: Default `None`. The name of the branch to push.
+        """
+        if name:
+            get_branch(name)
+
+        remote = self.repo.remotes.origin
+        command = ["git", "push", remote.name, self.branch.name]
+
+        return self.repo.git.execute(command)
+
+    @property
+    def prefix(self):
+        """Branch prefix accessor.
+        """
+        return self.branch.name.split('-')[0]
 
     @property
     def remote(self):

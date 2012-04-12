@@ -34,6 +34,7 @@ setup(
     ],
     entry_points={
         "console_scripts": [
+            "git-finish = continuity.cli:finish",
             "git-review = continuity.cli:review",
             "git-story = continuity.cli:story",
             "prepare-commit-msg = continuity.cli:commit"

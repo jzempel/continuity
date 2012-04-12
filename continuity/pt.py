@@ -133,6 +133,7 @@ class PivotalTracker(object):
             `https://www.pivotaltracker.com/help#howcanasearchberefined` for
             details.
         """
+        filter = "type:feature,chore,bug {0}".format(filter)
         stories = self.get_xml("stories", filter=filter, limit=1)
         count = stories.attributes["count"]
 
