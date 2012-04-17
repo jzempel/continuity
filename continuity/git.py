@@ -13,6 +13,7 @@ from __future__ import absolute_import
 from ConfigParser import NoSectionError
 from git.exc import GitCommandError, InvalidGitRepositoryError, NoSuchPathError
 from git.repo.base import Repo
+from os import environ
 from sys import exc_info
 
 
@@ -29,6 +30,8 @@ class Git(object):
     """
 
     def __init__(self, path=None):
+        self.git = environ.get("GIT_PYTHON_GIT_EXECUTABLE", "git")
+
         try:
             self.repo = Repo(path)
         except (InvalidGitRepositoryError, NoSuchPathError):
@@ -46,7 +49,7 @@ class Git(object):
         :param name: The name of the branch to create.
         :param push: Default `True`. Determine whether to push to remote.
         """
-        command = ["git", "checkout", "-b", str(name)]
+        command = [self.git, "checkout", "-b", str(name)]
 
         try:
             ret_val = self.repo.git.execute(command)
@@ -63,7 +66,7 @@ class Git(object):
 
         :param name: The name of the branch to delete.
         """
-        command = ["git", "branch", "-d", str(name)]
+        command = [self.git, "branch", "-d", str(name)]
 
         try:
             ret_val = self.repo.git.execute(command)
@@ -77,7 +80,7 @@ class Git(object):
 
         :param name: The name of the branch to checkout.
         """
-        command = ["git", "checkout", str(name)]
+        command = [self.git, "checkout", str(name)]
 
         try:
             ret_val = self.repo.git.execute(command)
@@ -115,9 +118,9 @@ class Git(object):
         if message:
             message = "{0} Merge branch '{1}' into {2}".format(message,
                     commit, self.branch.name)
-            command = ["git", "merge", "--no-ff", "-m", message, commit]
+            command = [self.git, "merge", "--no-ff", "-m", message, commit]
         else:
-            command = ["git", "merge", commit]
+            command = [self.git, "merge", commit]
 
         return self.repo.git.execute(command)
 
@@ -130,7 +133,7 @@ class Git(object):
             get_branch(name)
 
         remote = self.repo.remotes.origin
-        command = ["git", "push", remote.name, self.branch.name]
+        command = [self.git, "push", remote.name, self.branch.name]
 
         return self.repo.git.execute(command)
 
@@ -152,3 +155,17 @@ class Git(object):
             ret_val = None
 
         return ret_val
+
+    def set_configuration(self, section, data):
+        """Set the git configuration data for the given section.
+
+        :param section: The git configuration section to update.
+        :param data: A dictionary of configuration option-value pairs.
+        """
+        writer = self.repo.config_writer()
+
+        if not writer.has_section(section):
+            writer.add_section(section)
+
+        for option, value in data.items():
+            writer.set(section, option, value)

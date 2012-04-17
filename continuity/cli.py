@@ -12,7 +12,9 @@
 from .git import Git, GitException
 from .github import GitHub, GitHubException
 from .pt import PivotalTracker
-from sys import argv, exit
+from clint import args
+from os import chmod
+from sys import exit
 
 
 def _git():
@@ -27,21 +29,25 @@ def _git():
     return ret_val
 
 
-def commit():
+def commit(arguments):
     """Git prepare commit message hook.
+
+    :param arguments: Command line arguments.
     """
-    if len(argv) >= 2:
+    commit = arguments.get(0)
+
+    if commit:
         git = Git()
 
         try:
             story_id = int(git.prefix)
 
-            with open(argv[1]) as file:
+            with open(commit) as file:
                 message = file.read()
 
             message = "[#{0:d}] {1}".format(story_id, message)
 
-            with open(argv[1], 'w') as file:
+            with open(commit, 'w') as file:
                 file.write(message)
         except ValueError:
             exit(0)  # Not committing on a story branch.
@@ -49,8 +55,10 @@ def commit():
         exit(0)
 
 
-def finish():
+def finish(arguments):
     """Handle git request to finish a story branch.
+
+    :param arguments: Command line arguments.
     """
     git = _git()
 
@@ -76,8 +84,40 @@ def finish():
         exit(128)
 
 
-def review():
+def init(arguments):
+    """Initialize a git repository for use with continuity.
+
+    :param arguments: Command line arguments
+    """
+    git = _git()
+    aliases = {
+        "finish": "!continuity finish '$@'",
+        "review": "!continuity review '$@'",
+        "story": "!continuity story '$@'"
+    }
+    git.set_configuration("alias", aliases)
+    filename = "{0}/hooks/prepare-commit-msg".format(git.repo.git_dir)
+
+    with open(filename, 'w') as hook:
+        hook.write("#!/bin/sh\n\ncontinuity commit '$@'")
+
+    chmod(filename, 0755)
+
+
+def main():
+    """Main entry point.
+    """
+    command = args.get(0)
+
+    if command in commands:
+        args.remove(command)
+        commands[command].__call__(args)
+
+
+def review(arguments):
     """Handle github branch pull request.
+
+    :param arguments: Command line arguments.
     """
     git = _git()
     configuration = git.get_configuration("github")
@@ -108,8 +148,10 @@ def review():
         print "Missing 'github' git configuration."
 
 
-def story():
+def story(arguments):
     """Handle git branching and story state for the next story in PT.
+
+    :param arguments: Command line arguments.
     """
     git = _git()
     configuration = git.get_configuration("pivotal")
@@ -158,3 +200,12 @@ def story():
             print "No estimated stories found in the backlog."
     else:
         print "Missing 'pivotal' git configuration."
+
+
+commands = {
+    "commit": commit,
+    "finish": finish,
+    "init": init,
+    "review": review,
+    "story": story
+}

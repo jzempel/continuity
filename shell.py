@@ -10,7 +10,7 @@
     :license: BSD, see LICENSE for more details.
 """
 
-from continuity.cli import story
+from continuity.cli import main
 
 if __name__ == "__main__":
-    story()
+    main()

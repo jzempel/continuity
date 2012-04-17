@@ -24,6 +24,7 @@ setup(
     packages=["continuity"],
     include_package_data=True,
     install_requires=[
+        "clint",
         "GitPython",
             # "gitdb",
             # "async",
@@ -34,10 +35,7 @@ setup(
     ],
     entry_points={
         "console_scripts": [
-            "git-finish = continuity.cli:finish",
-            "git-review = continuity.cli:review",
-            "git-story = continuity.cli:story",
-            "prepare-commit-msg = continuity.cli:commit"
+            "continuity = continuity.cli:main"
         ]
     }
 )

@@ -15,8 +15,8 @@ python setup.py develop
 
 pushd pyinstaller-1.5.1
 arch -i386 python ./Configure.py
-arch -i386 python ./Makespec.py --onefile ../prepare_commit_message.py
-arch -i386 python ./Build.py prepare_commit_message/prepare_commit_message.spec
+arch -i386 python ./Makespec.py --onefile ../shell.py -n continuity
+arch -i386 python ./Build.py continuity/continuity.spec
 popd
 
-mv -f pyinstaller-1.5.1/prepare_commit_message/dist/prepare_commit_message .git/hooks/prepare-commit-msg
+mv -f pyinstaller-1.5.1/continuity/dist/continuity /usr/local/bin/
