@@ -23,20 +23,46 @@ class GitHub(object):
     """GitHub service.
 
     :param git: Git object instance.
-    :param user: GitHub user name.
-    :param password: GitHub password.
+    :param token: GitHub OAuth token.
     """
 
     PATTERN_REPOSITORY = re.compile(r"^.+:(?P<repository>\w+/\w+)\.git$", re.U)
     URI_TEMPLATE = "https://api.github.com/{0}"
 
-    def __init__(self, git, user, password):
+    def __init__(self, git, token):
         if git.remote and "github.com" in git.remote.url:
             self.git = git
-            self.user = user
-            self.password = password
+            self.token = token
         else:
             raise GitHubException("No github remote configured.")
+
+    @staticmethod
+    def create_token(user, password, name, url=None, scopes=["repo"]):
+        """Create an OAuth token for the given user.
+
+        :param user: The GitHub user to create a token for.
+        :param password: The user password.
+        :param name: The name for the token.
+        :param url: Default `None`. A URL associated with the token.
+        :param scopes: Default `['repo']`. A list of scopes this token is for.
+        """
+        url = GitHub.URI_TEMPLATE.format("authorizations")
+        data = {
+            "scopes": scopes,
+            "note": name,
+            "note_url": url
+        }
+        auth = (user, password)
+        response = post(url, data=dumps(data), auth=auth)
+
+        try:
+            response.raise_for_status()
+            authorization = loads(response.content)
+            ret_val = authorization["token"]
+        except RequestException, e:
+            ret_val = None
+
+        return ret_val
 
     def create_pull_request(self, title, description=None, branch=None):
         """Create a pull request.
@@ -56,7 +82,8 @@ class GitHub(object):
             "head": self.git.branch.name,
             "base": branch or "master"
         }
-        response = post(url, data=dumps(data), auth=(self.user, self.password))
+        headers = {"Authorization": "token {0}".format(self.token)}
+        response = post(url, data=dumps(data), headers=headers)
 
         try:
             response.raise_for_status()

@@ -101,7 +101,7 @@ class Git(object):
             for name, value in reader.items(section):
                 ret_val[name] = value
         except NoSectionError:
-            ret_val = None
+            pass
 
         return ret_val
 
