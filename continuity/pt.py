@@ -293,7 +293,7 @@ class PivotalTracker(object):
         :param user: The user to get a token for.
         :param password: The user password.
         """
-        url = PivotalTracker.URI_TEMPLATE.format(s='', path="tokens/active")
+        url = PivotalTracker.URI_TEMPLATE.format(s='s', path="tokens/active")
         auth = (user, password)
         response = get(url, auth=auth)
 
