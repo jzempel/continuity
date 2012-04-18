@@ -53,7 +53,7 @@ class GitHub(object):
             "note_url": url
         }
         auth = (user, password)
-        response = post(url, data=dumps(data), auth=auth)
+        response = post(url, data=dumps(data), auth=auth, verify=False)
 
         try:
             response.raise_for_status()
@@ -83,7 +83,7 @@ class GitHub(object):
             "base": branch or "master"
         }
         headers = {"Authorization": "token {0}".format(self.token)}
-        response = post(url, data=dumps(data), headers=headers)
+        response = post(url, data=dumps(data), headers=headers, verify=False)
 
         try:
             response.raise_for_status()

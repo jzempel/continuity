@@ -11,7 +11,6 @@
 """
 
 from continuity.cli import main
-import certifi  # Import needed for pyinstaller.
 
 if __name__ == "__main__":
     main()

@@ -295,7 +295,7 @@ class PivotalTracker(object):
         """
         url = PivotalTracker.URI_TEMPLATE.format(s='s', path="tokens/active")
         auth = (user, password)
-        response = get(url, auth=auth)
+        response = get(url, auth=auth, verify=False)
 
         try:
             response.raise_for_status()
@@ -319,7 +319,8 @@ class PivotalTracker(object):
         if method != "GET":
             headers["Content-Length"] = '0'
 
-        response = request(method, url, params=parameters, headers=headers)
+        response = request(method, url, params=parameters, headers=headers,
+                verify=False)
         xml = minidom.parseString(response.content)
 
         return xml.firstChild
