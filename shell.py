@@ -12,7 +12,6 @@
 
 from continuity.cli import main
 import certifi  # Import needed for pyinstaller.
-import httplib2
 
 if __name__ == "__main__":
     main()

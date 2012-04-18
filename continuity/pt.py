@@ -11,7 +11,6 @@
 
 from datetime import datetime
 from requests import get, request, RequestException
-from urlparse import urljoin
 from xml.dom import minidom
 
 
@@ -96,6 +95,15 @@ class Project(object):
         value = element.firstChild.nodeValue
 
         return int(value)
+
+    @property
+    def is_secure(self):
+        """Determine if this project requires HTTPS.
+        """
+        element = self.project.getElementsByTagName("use_https")[0]
+        value = element.firstChild.nodeValue
+
+        return value == "true"
 
     @property
     def members(self):
@@ -224,21 +232,26 @@ class PivotalTracker(object):
     :param token: The API token to use.
     """
 
-    API_URL = "https://www.pivotaltracker.com/services/v3/"
+    URI_TEMPLATE = "http{s}://www.pivotaltracker.com/services/v3/{path}"
 
     def __init__(self, token):
         self.token = token
+        self.projects = []
+        url = self.URI_TEMPLATE.format(s='', path="projects")
+        projects = self.get_xml(url)
+
+        for project in projects.getElementsByTagName("project"):
+            self.projects.append(Project(project))
 
     def get_project(self, id):
         """Get a project for the given ID.
 
         :param id: The ID of the project to get.
         """
-        path = "projects/{0}".format(id)
-        project = self.get_xml(path)
-
-        if project.tagName == "project":
-            ret_val = Project(project)
+        for project in self.projects:
+            if project.id == int(id):
+                ret_val = project
+                break
         else:
             ret_val = None
 
@@ -247,13 +260,7 @@ class PivotalTracker(object):
     def get_projects(self):
         """Get a list of projects.
         """
-        ret_val = []
-        projects = self.get_xml("projects")
-
-        for project in projects.getElementsByTagName("project"):
-            ret_val.append(Project(project))
-
-        return ret_val
+        return self.projects
 
     def get_story(self, project_id, filter):
         """Get the next story for the given filter.
@@ -263,9 +270,12 @@ class PivotalTracker(object):
             `https://www.pivotaltracker.com/help#howcanasearchberefined` for
             details.
         """
-        path = "projects/{0:d}/stories".format(project_id)
+        project = self.get_project(project_id)
+        s = 's' if project.is_secure else ''
+        path = "projects/{0:d}/stories".format(project.id)
+        url = self.URI_TEMPLATE.format(s=s, path=path)
         filter = "type:feature,chore,bug {0}".format(filter)
-        stories = self.get_xml(path, filter=filter, limit=1)
+        stories = self.get_xml(url, filter=filter, limit=1)
         count = stories.attributes["count"]
 
         if int(count.value) == 1:
@@ -283,7 +293,7 @@ class PivotalTracker(object):
         :param user: The user to get a token for.
         :param password: The user password.
         """
-        url = urljoin(PivotalTracker.API_URL, "tokens/active")
+        url = PivotalTracker.URI_TEMPLATE.format(s='', path="tokens/active")
         auth = (user, password)
         response = get(url, auth=auth)
 
@@ -297,14 +307,13 @@ class PivotalTracker(object):
 
         return ret_val
 
-    def get_xml(self, path, method="GET", **parameters):
-        """Get XML for the given path.
+    def get_xml(self, url, method="GET", **parameters):
+        """Get XML for the given url.
 
-        :param path: The path to get XML for.
+        :param url: The url to get XML for.
         :param method: Default ``'GET'``. The HTTP method to use.
         :param parameters: Query parameters.
         """
-        url = urljoin(self.API_URL, path)
         headers = {"X-TrackerToken": self.token}
 
         if method != "GET":
@@ -325,12 +334,15 @@ class PivotalTracker(object):
             ``'accepted'``, or ``'rejected'``.
         :param owner: Default `None`. Optional story owner.
         """
-        path = "projects/{0:d}/stories/{1:d}".format(project_id, id)
+        project = self.get_project(project_id)
+        s = 's' if project.is_secure else ''
+        path = "projects/{0:d}/stories/{1:d}".format(project.id, id)
+        url = self.URI_TEMPLATE.format(s=s, path=path)
         parameters = {"story[current_state]": state}
 
         if owner:
             parameters["story[owned_by]"] = owner
 
-        story = self.get_xml(path, method="PUT", **parameters)
+        story = self.get_xml(url, method="PUT", **parameters)
 
         return Story(story)
