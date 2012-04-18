@@ -222,8 +222,10 @@ def init(arguments):
         puts("Initialization aborted. Changes NOT saved.")
         exit()
 
+    git.set_configuration("pivotal", pivotal)
+    git.set_configuration("github", github)
     puts()
-    puts("continuity git configuration:")
+    puts("Configured git for continuity:")
 
     with indent():
         for key, value in pivotal.iteritems():
@@ -232,14 +234,19 @@ def init(arguments):
         for key, value in github.iteritems():
             puts("github.{0}={1}".format(key, value))
 
-    git.set_configuration("pivotal", pivotal)
-    git.set_configuration("github", github)
     aliases = {
         "finish": "!continuity finish \"$@\"",
         "review": "!continuity review \"$@\"",
         "story": "!continuity story \"$@\""
     }
     git.set_configuration("alias", aliases)
+    puts()
+    puts("Aliased git commands:")
+
+    with indent():
+        for command in sorted(aliases.iterkeys()):
+            puts(command)
+
     filename = "{0}/hooks/prepare-commit-msg".format(git.repo.git_dir)
 
     with open(filename, 'w') as hook:
