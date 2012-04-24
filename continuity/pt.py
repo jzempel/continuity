@@ -14,94 +14,103 @@ from requests import get, request, RequestException
 from xml.dom import minidom
 
 
-class Person(object):
-    """Pivotal Tracker person object.
+class Element(object):
+    """Pivotal Tracker element object.
 
-    :param person: Person DOM element.
+    :param element: DOM element.
     """
 
-    def __init__(self, person):
-        self.person = person
+    def __init__(self, element):
+        self.element = element
+
+    def child(self, name):
+        """Get a child element.
+
+        :param name: The name of the child element to get.
+        """
+        children = self.children(name)
+
+        return Element(children[0]) if children else None
+
+    def children(self, name):
+        """Get child elements.
+
+        :param name: The name of the children to get.
+        """
+        return self.element.getElementsByTagName(name)
 
     @property
-    def email(self):
-        """Person email accessor.
+    def value(self):
+        """Element value accessor.
         """
-        element = self.person.getElementsByTagName("email")[0]
+        child = self.element.firstChild
 
-        return element.firstChild.nodeValue
+        return child.nodeValue if child else None
+
+
+class IDElement(Element):
+    """Pivotal Tracker ID element object.
+    """
 
     @property
-    def initials(self):
-        """Person initials accessor.
+    def id(self):
+        """ID accessor.
         """
-        element = self.person.getElementsByTagName("initials")[0]
+        value = self.child("id").value
 
-        return element.firstChild.nodeValue
-
-    @property
-    def name(self):
-        """Person name accessor.
-        """
-        element = self.person.getElementsByTagName("name")[0]
-
-        return element.firstChild.nodeValue
+        return int(value)
 
 
-class Member(Person):
+class Member(IDElement):
     """Pivotal Tracker member object.
 
     :param member: Member DOM element.
     """
 
     def __init__(self, member):
-        self.member = member
-        person = member.getElementsByTagName("person")[0]
+        super(Member, self).__init__(member)
 
-        super(Member, self).__init__(person)
+        self.person = self.child("person")
 
     @property
-    def id(self):
-        """Member ID accessor.
+    def email(self):
+        """Person email accessor.
         """
-        element = self.member.getElementsByTagName("id")[0]
-        value = element.firstChild.nodeValue
+        return self.person.child("email").value
 
-        return int(value)
+    @property
+    def initials(self):
+        """Person initials accessor.
+        """
+        return self.person.child("initials").value
+
+    @property
+    def name(self):
+        """Person name accessor.
+        """
+        return self.person.child("name").value
 
     @property
     def role(self):
         """Member role accessor.
         """
-        element = self.member.getElementsByTagName("role")[0]
-
-        return element.firstChild.nodeValue
+        return self.child("role").value
 
 
-class Project(object):
+class Project(IDElement):
     """Pivotal Tracker project object.
 
     :param project: Project DOM element.
     """
 
     def __init__(self, project):
-        self.project = project
-
-    @property
-    def id(self):
-        """Project ID accessor.
-        """
-        element = self.project.getElementsByTagName("id")[0]
-        value = element.firstChild.nodeValue
-
-        return int(value)
+        super(Project, self).__init__(project)
 
     @property
     def is_secure(self):
         """Determine if this project requires HTTPS.
         """
-        element = self.project.getElementsByTagName("use_https")[0]
-        value = element.firstChild.nodeValue
+        value = self.child("use_https").value
 
         return value == "true"
 
@@ -110,10 +119,9 @@ class Project(object):
         """Project membership accessor.
         """
         ret_val = []
-        element = self.project.getElementsByTagName("memberships")[0]
-        memberships = element.getElementsByTagName("membership")
+        memberships = self.child("memberships")
 
-        for membership in element.getElementsByTagName("membership"):
+        for membership in memberships.children("membership"):
             member = Member(membership)
             ret_val.append(member)
 
@@ -123,12 +131,10 @@ class Project(object):
     def name(self):
         """Project name accessor.
         """
-        element = self.project.getElementsByTagName("name")[0]
-
-        return element.firstChild.nodeValue
+        return self.child("name").value
 
 
-class Story(object):
+class Story(IDElement):
     """Pivotal Tracker story object.
 
     :param story: Story DOM element.
@@ -137,14 +143,13 @@ class Story(object):
     FORMAT_DATETIME = "%Y/%m/%d %H:%M:%S %Z"
 
     def __init__(self, story):
-        self.story = story
+        super(Story, self).__init__(story)
 
     @property
     def created(self):
         """Story created accessor.
         """
-        element = self.story.getElementsByTagName("created_at")[0]
-        value = element.firstChild.nodeValue
+        value = self.child("created_at").value
 
         return datetime.strptime(value, self.FORMAT_DATETIME)
 
@@ -152,74 +157,48 @@ class Story(object):
     def description(self):
         """Story description accessor.
         """
-        element = self.story.getElementsByTagName("description")[0]
-        text = element.firstChild
-
-        return text.nodeValue if text else None
-
-    @property
-    def id(self):
-        """Story ID accessor.
-        """
-        element = self.story.getElementsByTagName("id")[0]
-        value = element.firstChild.nodeValue
-
-        return int(value)
+        return self.child("description").value
 
     @property
     def name(self):
         """Story name accessor.
         """
-        element = self.story.getElementsByTagName("name")[0]
-
-        return element.firstChild.nodeValue
+        return self.child("name").value
 
     @property
     def owner(self):
         """Story owner accessor.
         """
-        elements = self.story.getElementsByTagName("owned_by")
+        child = self.child("owned_by")
 
-        if elements:
-            ret_val = elements[0].firstChild.nodeValue
-        else:
-            ret_val = None
-
-        return ret_val
+        return child.value if child else None
 
     @property
     def requester(self):
         """Story requester accessor.
         """
-        element = self.story.getElementsByTagName("requested_by")[0]
-
-        return element.firstChild.nodeValue
+        return self.child("requested_by").value
 
     @property
     def state(self):
         """Story state accessor.
         """
-        element = self.story.getElementsByTagName("current_state")[0]
-
-        return element.firstChild.nodeValue
+        return self.child("current_state").value
 
     @property
     def type(self):
         """Story type accessor.
         """
-        element = self.story.getElementsByTagName("story_type")[0]
-
-        return element.firstChild.nodeValue
+        return self.child("story_type").value
 
     @property
     def updated(self):
         """Story updated accessor.
         """
-        elements = self.story.getElementsByTagName("updated_at")
+        child = self.child("updated_at")
 
-        if elements:
-            value = elements[0].firstChild.nodeValue
-            ret_val = datetime.strptime(value, self.FORMAT_DATETIME)
+        if child:
+            ret_val = datetime.strptime(child.value, self.FORMAT_DATETIME)
         else:
             ret_val = None
 
