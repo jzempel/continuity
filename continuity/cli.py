@@ -237,7 +237,8 @@ def init(arguments):
     aliases = {
         "finish": "!continuity finish \"$@\"",
         "review": "!continuity review \"$@\"",
-        "story": "!continuity story \"$@\""
+        "story": "!continuity story \"$@\"",
+        "task": "!continuity task \"$@\""
     }
     git.set_configuration("alias", aliases)
     puts()
@@ -356,10 +357,47 @@ def story(arguments):
         exit(1)
 
 
+def task(arguments):
+    """Display the task list for the current story branch.
+
+    :param arguments: Command line arguments.
+    """
+    git = _git()
+
+    try:
+        branch = git.branch.name
+        story_id = int(git.prefix)
+        configuration = git.get_configuration("pivotal")
+
+        if configuration:
+            try:
+                token = configuration["api-token"]
+                project_id = configuration["project-id"]
+            except KeyError, e:
+                puts_err("Missing 'pivotal.{0}' git configuration.".\
+                        format(e.message))
+                exit(1)
+        else:
+            puts_err("Missing 'pivotal' git configuration.")
+            exit(1)
+
+        pt = PivotalTracker(token)
+        tasks = pt.get_tasks(project_id, story_id)
+
+        for task in tasks:
+            checkmark = 'x' if task.is_checked else ' '
+            message = "[{0}] {1}".format(checkmark, task.description)
+            puts(message)
+
+    except ValueError:
+        puts_err("Not a story branch.")
+        exit(128)
+
 commands = {
     "commit": commit,
     "finish": finish,
     "init": init,
     "review": review,
-    "story": story
+    "story": story,
+    "task": task
 }

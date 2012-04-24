@@ -14,6 +14,33 @@ from requests import get, request, RequestException
 from xml.dom import minidom
 
 
+class datetime_property(object):
+    """Date/time property decorator.
+
+    :param function: The function to decorate.
+    """
+
+    FORMAT_DATETIME = "%Y/%m/%d %H:%M:%S %Z"
+
+    def __init__(self, function):
+        self.function = function
+
+    def __get__(self, instance, owner):
+        """Attribute accessor - converts a Pivotal Tracker date/time value into
+        a Python datetime object.
+
+        :param instance: The instance to get an attribute for.
+        :param owner: The owner class.
+        """
+        try:
+            value = self.function(instance)
+            ret_val = datetime.strptime(value, self.FORMAT_DATETIME)
+        except AttributeError:
+            ret_val = None
+
+        return ret_val
+
+
 class Element(object):
     """Pivotal Tracker element object.
 
@@ -140,18 +167,14 @@ class Story(IDElement):
     :param story: Story DOM element.
     """
 
-    FORMAT_DATETIME = "%Y/%m/%d %H:%M:%S %Z"
-
     def __init__(self, story):
         super(Story, self).__init__(story)
 
-    @property
+    @datetime_property
     def created(self):
         """Story created accessor.
         """
-        value = self.child("created_at").value
-
-        return datetime.strptime(value, self.FORMAT_DATETIME)
+        return self.child("created_at").value
 
     @property
     def description(self):
@@ -191,18 +214,49 @@ class Story(IDElement):
         """
         return self.child("story_type").value
 
-    @property
+    @datetime_property
     def updated(self):
         """Story updated accessor.
         """
-        child = self.child("updated_at")
+        return self.child("updated_at").value
 
-        if child:
-            ret_val = datetime.strptime(child.value, self.FORMAT_DATETIME)
-        else:
-            ret_val = None
 
-        return ret_val
+class Task(IDElement):
+    """Pivotal Tracker task object.
+
+    :param task: Task DOM element.
+    """
+
+    def __init__(self, task):
+        super(Task, self).__init__(task)
+
+    @datetime_property
+    def created(self):
+        """Task created accessor.
+        """
+        return self.child("created_at").value
+
+    @property
+    def description(self):
+        """Task description accessor.
+        """
+        return self.child("description").value
+
+    @property
+    def is_checked(self):
+        """Determine if this task is checked.
+        """
+        value = self.child("complete").value
+
+        return value == "true"
+
+    @property
+    def number(self):
+        """Task number accessor.
+        """
+        value = self.child("position").value
+
+        return int(value)
 
 
 class PivotalTracker(object):
@@ -262,6 +316,29 @@ class PivotalTracker(object):
             ret_val = Story(story)
         else:
             ret_val = None
+
+        return ret_val
+
+    def get_tasks(self, project_id, story_id):
+        """Get the tasks for the given story.
+
+        :param project_id: The ID of the project to use.
+        :param story_id: The ID of the story to use.
+        """
+        ret_val = []
+        project = self.get_project(project_id)
+        filter = "id:{0:d}".format(int(story_id))
+        story = self.get_story(project.id, filter)
+
+        if story:
+            s = 's' if project.is_secure else ''
+            path = "projects/{0:d}/stories/{1:d}/tasks".format(project.id,
+                    story.id)
+            url = self.URI_TEMPLATE.format(s=s, path=path)
+            tasks = self.get_xml(url)
+
+            for task in tasks.getElementsByTagName("task"):
+                ret_val.append(Task(task))
 
         return ret_val
 
