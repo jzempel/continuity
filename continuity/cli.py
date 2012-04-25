@@ -19,6 +19,41 @@ from os import chmod
 from sys import exit
 
 
+def _get_section(git, name):
+    """Get a git configuration section.
+
+    :param git: Git repository.
+    :param name: The name of the section to retrieve.
+    """
+    ret_val = git.get_configuration(name)
+
+    if not ret_val:
+        message = "Missing '{0}' git configuration.".format(name)
+        puts_err(message)
+        exit(1)
+
+    return ret_val
+
+
+def _get_value(git, section, key):
+    """Get a git configuration value.
+
+    :param git: Git repository.
+    :param section: The configuration section.
+    :param key: The key to retrieve a value for.
+    """
+    configuration = _get_section(git, section)
+
+    try:
+        ret_val = configuration[key]
+    except KeyError:
+        message = "Missing '{0}.{1}' git configuration.".\
+                format(section, key)
+        exit(1)
+
+    return ret_val
+
+
 def _git():
     """Get git.
     """
@@ -184,13 +219,7 @@ def finish(arguments):
         branch = git.branch.name
         story_id = int(git.prefix)
         message = "[finish #{0:d}]".format(story_id)
-        configuration = git.get_configuration("pivotal")
-
-        if configuration:
-            target = configuration.get("integration-branch")
-        else:
-            target = None
-
+        target = _get_section(git, "pivotal").get("integration-branch")
         git.merge_branch(target, message)
         puts("Merged branch '{0}' into {1}.".format(branch, git.branch.name))
         git.delete_branch(branch)
@@ -212,7 +241,8 @@ def init(arguments):
     try:
         puts("Enter values or accept [defaults] with Enter.")
         puts()
-        pivotal = _init_pivotal(git.get_configuration("pivotal"))
+        configuration = git.get_configuration("pivotal")
+        pivotal = _init_pivotal(configuration)
         puts()
         configuration = git.get_configuration("github")
         configuration["merge-branch"] = pivotal.get("integration-branch")
@@ -273,32 +303,39 @@ def review(arguments):
     :param arguments: Command line arguments.
     """
     git = _git()
-    configuration = git.get_configuration("github")
 
-    if configuration:
-        try:
-            token = configuration["oauth-token"]
-        except KeyError, e:
-            puts_err("Missing 'github.{0}' git configuration.".\
-                    format(e.message))
-            exit(1)
+    try:
+        story_id = int(git.prefix)
+        token = _get_value(git, "pivotal", "api-token")
+        pt = PivotalTracker(token)
+        project_id = _get_value(git, "pivotal", "project-id")
+        story = pt.get_story(project_id, story_id)
+    except ValueError:
+        puts_err("Not a story branch.")
+        exit(128)
 
-        try:
-            github = GitHub(git, token)
-            title = '-'.join(git.branch.name.split('-')[1:])
-            message = "Pull request title [{0}]: ".format(title)
-            title = raw_input(message) or title
-            description = raw_input("Pull request description (optional): ")
-            git.push_branch()
-            branch = configuration.get("merge-branch")
-            pull_request = github.create_pull_request(title, description,
-                    branch)
-            puts("Opened pull request: {0}".format(pull_request["url"]))
-        except GitHubException, e:
-            puts_err("Unable to create pull request.")
-            exit(128)
-    else:
-        puts_err("Missing 'github' git configuration.")
+    token = _get_value(git, "github", "oauth-token")
+
+    try:
+        github = GitHub(git, token)
+        title = '-'.join(git.branch.name.split('-')[1:])
+        message = "Pull request title [{0}]: ".format(title)
+        title = raw_input(message) or title
+        description = raw_input("Pull request description (optional): ")
+
+        if description:
+            "{0}\n\n{1}".format(story.url, description)
+        else:
+            description = story.url
+
+        git.push_branch()
+        branch = _get_value(git, "github", "merge-branch")
+        pull_request = github.create_pull_request(title, description,
+                branch)
+        puts("Opened pull request: {0}".format(pull_request["url"]))
+    except GitHubException, e:
+        puts_err("Unable to create pull request.")
+        exit(128)
 
 
 def story(arguments):
@@ -307,54 +344,42 @@ def story(arguments):
     :param arguments: Command line arguments.
     """
     git = _git()
-    configuration = git.get_configuration("pivotal")
+    token = _get_value(git, "pivotal", "api-token")
+    pt = PivotalTracker(token)
+    owner = _get_value(git, "pivotal", "owner")
+    filter = "owner:{0} state:unstarted,rejected".format(owner)
+    puts("Retrieving next story from Pivotal Tracker for {0}…".\
+            format(owner))
+    project_id = _get_value(git, "pivotal", "project-id")
+    story = pt.get_story(project_id, filter)
 
-    if configuration:
-        try:
-            token = configuration["api-token"]
-            project_id = configuration["project-id"]
-            owner = configuration["owner"]
-        except KeyError, e:
-            puts_err("Missing 'pivotal.{0}' git configuration.".\
-                    format(e.message))
-            exit(1)
-
-        pt = PivotalTracker(token)
-        filter = "owner:{0} state:unstarted,rejected".format(owner)
-        puts("Retrieving next story from Pivotal Tracker for {0}…".\
-                format(owner))
+    if not story:
+        filter = "state:unstarted"
         story = pt.get_story(project_id, filter)
 
-        if not story:
-            filter = "state:unstarted"
-            story = pt.get_story(project_id, filter)
+    if story:
+        puts("Story: {0}".format(story.name))
 
-        if story:
-            puts("Story: {0}".format(story.name))
+        if story.owner != owner:
+            story = pt.set_story(project_id, story.id, story.state, owner)
 
-            if story.owner != owner:
-                story = pt.set_story(project_id, story.id, story.state, owner)
+        # Verify that owner got the story.
+        if story.owner == owner:
+            message = "Enter branch name: {0:d}-".format(story.id)
 
-            # Verify that owner got the story.
-            if story.owner == owner:
-                message = "Enter branch name: {0:d}-".format(story.id)
-
-                try:
-                    suffix = raw_input(message)
-                    name = "{0:d}-{1}".format(story.id, suffix)
-                    git.create_branch(name)
-                    pt.set_story(project_id, story.id, "started")
-                    puts("Switched to a new branch '{0}'".format(name))
-                except KeyboardInterrupt:
-                    puts()
-                    puts("Aborted story branch!")
-            else:
-                puts("Unable to update story owner.")
+            try:
+                suffix = raw_input(message)
+                name = "{0:d}-{1}".format(story.id, suffix)
+                git.create_branch(name)
+                pt.set_story(project_id, story.id, "started")
+                puts("Switched to a new branch '{0}'".format(name))
+            except KeyboardInterrupt:
+                puts()
+                puts("Aborted story branch!")
         else:
-            puts("No estimated stories found in the backlog.")
+            puts("Unable to update story owner.")
     else:
-        puts_err("Missing 'pivotal' git configuration.")
-        exit(1)
+        puts("No estimated stories found in the backlog.")
 
 
 def task(arguments):
@@ -365,28 +390,16 @@ def task(arguments):
     git = _git()
 
     try:
-        branch = git.branch.name
         story_id = int(git.prefix)
-        configuration = git.get_configuration("pivotal")
-
-        if configuration:
-            try:
-                token = configuration["api-token"]
-                project_id = configuration["project-id"]
-            except KeyError, e:
-                puts_err("Missing 'pivotal.{0}' git configuration.".\
-                        format(e.message))
-                exit(1)
-        else:
-            puts_err("Missing 'pivotal' git configuration.")
-            exit(1)
-
+        token = _get_value(git, "pivotal", "api-token")
         pt = PivotalTracker(token)
+        project_id = _get_value(git, "pivotal", "project-id")
         tasks = pt.get_tasks(project_id, story_id)
 
         for task in tasks:
             checkmark = 'x' if task.is_checked else ' '
-            message = "[{0}] {1}".format(checkmark, task.description)
+            message = "[{0}] {1}. {2}".format(checkmark, task.number,
+                    task.description)
             puts(message)
 
     except ValueError:

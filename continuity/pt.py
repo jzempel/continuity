@@ -220,6 +220,12 @@ class Story(IDElement):
         """
         return self.child("updated_at").value
 
+    @property
+    def url(self):
+        """Story URL accessor.
+        """
+        return self.child("url").value
+
 
 class Task(IDElement):
     """Pivotal Tracker task object.
