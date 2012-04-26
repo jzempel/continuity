@@ -89,13 +89,17 @@ class Git(object):
 
         return ret_val
 
-    def get_configuration(self, section):
+    def get_configuration(self, section, subsection=None):
         """Get the git configuration for the given section.
 
         :param section: The git configuration section to retrieve.
+        :param subsection: Default `None`. Optional subsection.
         """
         ret_val = {}
         reader = self.repo.config_reader()
+
+        if subsection:
+            section = '{0} "{1}"'.format(section, subsection)
 
         try:
             for name, value in reader.items(section):
@@ -138,12 +142,6 @@ class Git(object):
         return self.repo.git.execute(command)
 
     @property
-    def prefix(self):
-        """Branch prefix accessor.
-        """
-        return self.branch.name.split('-')[0]
-
-    @property
     def remote(self):
         """Remote accessor.
         """
@@ -156,16 +154,20 @@ class Git(object):
 
         return ret_val
 
-    def set_configuration(self, section, data):
+    def set_configuration(self, section, subsection=None, **kwargs):
         """Set the git configuration data for the given section.
 
         :param section: The git configuration section to update.
-        :param data: A dictionary of configuration option-value pairs.
+        :param subsection: Default `None`. Optional subsection.
+        :param kwargs: Configuration option-value pairs.
         """
         writer = self.repo.config_writer()
+
+        if subsection:
+            section = '{0} "{1}"'.format(section, subsection)
 
         if not writer.has_section(section):
             writer.add_section(section)
 
-        for option, value in data.items():
+        for option, value in kwargs.items():
             writer.set(section, option, value)

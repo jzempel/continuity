@@ -35,6 +35,28 @@ def _get_section(git, name):
     return ret_val
 
 
+def _get_story_id(git):
+    """Get the story ID for the current Git branch.
+
+    :param git: Git repository.
+    """
+    configuration = git.get_configuration("branch", git.branch.name)
+
+    if configuration:
+        try:
+            ret_val = configuration["story"]
+        except KeyError:
+            ret_val = None
+    else:
+        ret_val = None
+
+    if not ret_val:
+        puts_err("fatal: Not a story branch.")
+        exit(1)
+
+    return ret_val
+
+
 def _get_value(git, section, key):
     """Get a git configuration value.
 
@@ -49,6 +71,7 @@ def _get_value(git, section, key):
     except KeyError:
         message = "Missing '{0}.{1}' git configuration.".\
                 format(section, key)
+        puts(message)
         exit(1)
 
     return ret_val
@@ -60,7 +83,7 @@ def _git():
     try:
         ret_val = Git()
     except GitException:
-        puts_err("Not a git repository.")
+        puts_err("fatal: Not a git repository.")
         exit(128)
 
     return ret_val
@@ -191,19 +214,23 @@ def commit(arguments):
 
     if commit:
         git = Git()
+        configuration = git.get_configuration("branch", git.branch.name)
 
-        try:
-            story_id = int(git.prefix)
+        if configuration:
+            try:
+                story_id = configuration["story"]
 
-            with open(commit) as file:
-                message = file.read()
+                with open(commit) as file:
+                    message = file.read()
 
-            message = "[#{0:d}] {1}".format(story_id, message)
+                message = "[#{0}] {1}".format(story_id, message)
 
-            with open(commit, 'w') as file:
-                file.write(message)
-        except ValueError:
-            exit()  # Not committing on a story branch.
+                with open(commit, 'w') as file:
+                    file.write(message)
+            except KeyError:
+                exit()
+        else:
+            exit()
     else:
         exit()
 
@@ -214,21 +241,16 @@ def finish(arguments):
     :param arguments: Command line arguments.
     """
     git = _git()
-
-    try:
-        branch = git.branch.name
-        story_id = int(git.prefix)
-        message = "[finish #{0:d}]".format(story_id)
-        target = _get_section(git, "pivotal").get("integration-branch")
-        git.merge_branch(target, message)
-        puts("Merged branch '{0}' into {1}.".format(branch, git.branch.name))
-        git.delete_branch(branch)
-        puts("Deleted branch {0}.".format(branch))
-        git.push_branch()
-        puts("Finished story #{0:d}.".format(story_id))
-    except ValueError:
-        puts_err("Not a story branch.")
-        exit(128)
+    branch = git.branch.name
+    story_id = _get_story_id(git)
+    message = "[finish #{0}]".format(story_id)
+    target = _get_section(git, "pivotal").get("integration-branch")
+    git.merge_branch(target, message)
+    puts("Merged branch '{0}' into {1}.".format(branch, git.branch.name))
+    git.delete_branch(branch)
+    puts("Deleted branch {0}.".format(branch))
+    git.push_branch()
+    puts("Finished story #{0}.".format(story_id))
 
 
 def init(arguments):
@@ -252,8 +274,8 @@ def init(arguments):
         puts("Initialization aborted. Changes NOT saved.")
         exit()
 
-    git.set_configuration("pivotal", pivotal)
-    git.set_configuration("github", github)
+    git.set_configuration("pivotal", **pivotal)
+    git.set_configuration("github", **github)
     puts()
     puts("Configured git for continuity:")
 
@@ -270,7 +292,7 @@ def init(arguments):
         "story": "!continuity story \"$@\"",
         "task": "!continuity task \"$@\""
     }
-    git.set_configuration("alias", aliases)
+    git.set_configuration("alias", **aliases)
     puts()
     puts("Aliased git commands:")
 
@@ -303,30 +325,23 @@ def review(arguments):
     :param arguments: Command line arguments.
     """
     git = _git()
-
-    try:
-        story_id = int(git.prefix)
-        token = _get_value(git, "pivotal", "api-token")
-        pt = PivotalTracker(token)
-        project_id = _get_value(git, "pivotal", "project-id")
-        story = pt.get_story(project_id, story_id)
-    except ValueError:
-        puts_err("Not a story branch.")
-        exit(128)
-
+    story_id = _get_story_id(git)
+    token = _get_value(git, "pivotal", "api-token")
+    pt = PivotalTracker(token)
+    project_id = _get_value(git, "pivotal", "project-id")
     token = _get_value(git, "github", "oauth-token")
 
     try:
         github = GitHub(git, token)
-        title = '-'.join(git.branch.name.split('-')[1:])
-        message = "Pull request title [{0}]: ".format(title)
-        title = raw_input(message) or title
+        title = _prompt("Pull request title", git.branch.name)
         description = raw_input("Pull request description (optional): ")
+        story = pt.get_story(project_id, story_id)
 
-        if description:
-            "{0}\n\n{1}".format(story.url, description)
-        else:
-            description = story.url
+        if story:
+            if description:
+                "{0}\n\n{1}".format(story.url, description)
+            else:
+                description = story.url
 
         git.push_branch()
         branch = _get_value(git, "github", "merge-branch")
@@ -365,12 +380,10 @@ def story(arguments):
 
         # Verify that owner got the story.
         if story.owner == owner:
-            message = "Enter branch name: {0:d}-".format(story.id)
-
             try:
-                suffix = raw_input(message)
-                name = "{0:d}-{1}".format(story.id, suffix)
+                name = _prompt("Enter branch name")
                 git.create_branch(name)
+                git.set_configuration("branch", name, story=story.id)
                 pt.set_story(project_id, story.id, "started")
                 puts("Switched to a new branch '{0}'".format(name))
             except KeyboardInterrupt:
@@ -388,23 +401,17 @@ def task(arguments):
     :param arguments: Command line arguments.
     """
     git = _git()
+    story_id = _get_story_id(git)
+    token = _get_value(git, "pivotal", "api-token")
+    pt = PivotalTracker(token)
+    project_id = _get_value(git, "pivotal", "project-id")
+    tasks = pt.get_tasks(project_id, story_id)
 
-    try:
-        story_id = int(git.prefix)
-        token = _get_value(git, "pivotal", "api-token")
-        pt = PivotalTracker(token)
-        project_id = _get_value(git, "pivotal", "project-id")
-        tasks = pt.get_tasks(project_id, story_id)
-
-        for task in tasks:
-            checkmark = 'x' if task.is_checked else ' '
-            message = "[{0}] {1}. {2}".format(checkmark, task.number,
-                    task.description)
-            puts(message)
-
-    except ValueError:
-        puts_err("Not a story branch.")
-        exit(128)
+    for task in tasks:
+        checkmark = 'x' if task.is_checked else ' '
+        message = "[{0}] {1}. {2}".format(checkmark, task.number,
+                task.description)
+        puts(message)
 
 commands = {
     "commit": commit,
