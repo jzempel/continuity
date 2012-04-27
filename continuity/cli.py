@@ -89,20 +89,20 @@ def _git():
     return ret_val
 
 
-def _init_github(configuration):
+def _init_github(configuration, pivotal):
     """Initialize GitHub data.
 
     :param configuration: The GitHub configuration to intialize for.
+    :param pivotal: The Pivotal configuration to initialize for.
     """
+    git = Git()
     token = configuration.get("oauth-token")
-    branch = configuration.get("merge-branch")
 
     if token:
         token = _prompt("GitHub OAuth token", token)
     else:
         user = _prompt("GitHub user", configuration.get("user"))
         password = getpass("GitHub password: ")
-        git = Git()
         name = "continuity:{0}".format(git.repo.working_dir)
         url = "https://github.com/jzempel/continuity"
         token = GitHub.create_token(user, password, name, url)
@@ -111,12 +111,16 @@ def _init_github(configuration):
             puts_err("Invalid GitHub credentials.")
             exit(1)
 
-    branch = _prompt("GitHub merge branch", branch)
+    ret_val = {"oauth-token": token}
+    github = GitHub(git, token)
+    hooks = github.get_hooks()
+    token = hooks.get("pivotaltracker", {}).get("config", {}).get("token")
 
-    return {
-        "oauth-token": token,
-        "merge-branch": branch
-    }
+    if not token:
+        token = pivotal["api-token"]
+        github.create_hook("pivotaltracker", token=token)
+
+    return ret_val
 
 
 def _init_pivotal(configuration):
@@ -128,7 +132,6 @@ def _init_pivotal(configuration):
     project_id = configuration.get("project-id")
     email = configuration.get("email")
     owner = configuration.get("owner")
-    branch = configuration.get("integration-branch")
 
     if token:
         token = _prompt("Pivotal Tracker API token", token)
@@ -173,18 +176,11 @@ def _init_pivotal(configuration):
         puts_err("No Pivotal Tracker projects found.")
         exit(1)
 
-    if not branch:
-        git = Git()
-        branch = git.branch.name
-
-    branch = _prompt("Pivotal Tracker story integration branch", branch)
-
     return {
         "api-token": token,
         "project-id": project_id,
         "email": email,
         "owner": owner,
-        "integration-branch": branch
     }
 
 
@@ -244,7 +240,7 @@ def finish(arguments):
     branch = git.branch.name
     story_id = _get_story_id(git)
     message = "[finish #{0}]".format(story_id)
-    target = _get_section(git, "pivotal").get("integration-branch")
+    target = _get_section(git, "continuity").get("integration-branch")
     git.merge_branch(target, message)
     puts("Merged branch '{0}' into {1}.".format(branch, git.branch.name))
     git.delete_branch(branch)
@@ -267,8 +263,11 @@ def init(arguments):
         pivotal = _init_pivotal(configuration)
         puts()
         configuration = git.get_configuration("github")
-        configuration["merge-branch"] = pivotal.get("integration-branch")
-        github = _init_github(configuration)
+        github = _init_github(configuration, pivotal)
+        puts()
+        configuration = git.get_configuration("continuity")
+        branch = configuration.get("integration-branch") or git.branch.name
+        branch = _prompt("Integration branch", branch)
     except KeyboardInterrupt:
         puts()
         puts("Initialization aborted. Changes NOT saved.")
@@ -276,6 +275,7 @@ def init(arguments):
 
     git.set_configuration("pivotal", **pivotal)
     git.set_configuration("github", **github)
+    git.set_configuration("continuity", **{"integration-branch": branch})
     puts()
     puts("Configured git for continuity:")
 
@@ -285,6 +285,8 @@ def init(arguments):
 
         for key, value in github.iteritems():
             puts("github.{0}={1}".format(key, value))
+
+        puts("continuity.integration-branch={0}".format(branch))
 
     aliases = {
         "finish": "!continuity finish \"$@\"",
@@ -344,7 +346,7 @@ def review(arguments):
                 description = story.url
 
         git.push_branch()
-        branch = _get_value(git, "github", "merge-branch")
+        branch = _get_value(git, "continuity", "integration-branch")
         pull_request = github.create_pull_request(title, description,
                 branch)
         puts("Opened pull request: {0}".format(pull_request["url"]))
