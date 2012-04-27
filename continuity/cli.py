@@ -89,6 +89,18 @@ def _git():
     return ret_val
 
 
+def _init_continuity(configuration):
+    """Initialize Continuity data.
+
+    :param configuration: The git configuration to initialize for.
+    """
+    git = Git()
+    branch = configuration.get("integration-branch") or git.branch.name
+    branch = _prompt("Integration branch", branch)
+
+    return {"integration-branch": branch}
+
+
 def _init_github(configuration, pivotal):
     """Initialize GitHub data.
 
@@ -266,8 +278,7 @@ def init(arguments):
         github = _init_github(configuration, pivotal)
         puts()
         configuration = git.get_configuration("continuity")
-        branch = configuration.get("integration-branch") or git.branch.name
-        branch = _prompt("Integration branch", branch)
+        continuity = _init_continuity(configuration)
     except KeyboardInterrupt:
         puts()
         puts("Initialization aborted. Changes NOT saved.")
@@ -275,7 +286,7 @@ def init(arguments):
 
     git.set_configuration("pivotal", **pivotal)
     git.set_configuration("github", **github)
-    git.set_configuration("continuity", **{"integration-branch": branch})
+    git.set_configuration("continuity", **continuity)
     puts()
     puts("Configured git for continuity:")
 
@@ -286,7 +297,8 @@ def init(arguments):
         for key, value in github.iteritems():
             puts("github.{0}={1}".format(key, value))
 
-        puts("continuity.integration-branch={0}".format(branch))
+        for key, value in continuity.iteritems():
+            puts("continuity.{0}={1}".format(key, value))
 
     aliases = {
         "finish": "!continuity finish \"$@\"",

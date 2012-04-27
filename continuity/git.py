@@ -134,7 +134,7 @@ class Git(object):
         :param name: Default `None`. The name of the branch to push.
         """
         if name:
-            get_branch(name)
+            self.get_branch(name)
 
         remote = self.repo.remotes.origin
         command = [self.git, "push", remote.name, self.branch.name]
