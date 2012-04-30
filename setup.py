@@ -11,13 +11,14 @@
 """
 
 from setuptools import setup
+import continuity
 
 setup(
     name="continuity",
-    version="0.1",
+    version=continuity.__version__,
     url="http://github.com/jzempel/continuity",
-    license="BSD",
-    author="Jonathan Zempel",
+    license=continuity.__license__,
+    author=continuity.__author__,
     author_email="jzempel@gmail.com",
     description="Continuous dev flow using Pivotal Tracker and GitHub.",
     long_description=__doc__,

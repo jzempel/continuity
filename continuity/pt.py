@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 """
-    pt
-    ~~
+    continuity.pt
+    ~~~~~~~~~~~~~
 
     Pivotal Tracker API.
 

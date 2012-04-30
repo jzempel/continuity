@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 """
-    cli
-    ~~~
+    continuity.cli
+    ~~~~~~~~~~~~~~
 
     Continuity command line interface.
 
@@ -9,14 +9,45 @@
     :license: BSD, see LICENSE for more details.
 """
 
+from . import __version__
 from .git import Git, GitException
 from .github import GitHub, GitHubException
 from .pt import PivotalTracker
 from clint import args
-from clint.textui import colored, indent, puts, puts_err
+from clint.textui import colored, columns, indent, puts, puts_err
 from getpass import getpass
 from os import chmod
 from sys import exit
+
+
+def _commit(arguments):
+    """Git prepare commit message hook.
+
+    :param arguments: Command line arguments.
+    """
+    commit = arguments.get(0)
+
+    if commit:
+        git = Git()
+        configuration = git.get_configuration("branch", git.branch.name)
+
+        if configuration:
+            try:
+                story_id = configuration["story"]
+
+                with open(commit) as file:
+                    message = file.read()
+
+                message = "[#{0}] {1}".format(story_id, message)
+
+                with open(commit, 'w') as file:
+                    file.write(message)
+            except KeyError:
+                exit()
+        else:
+            exit()
+    else:
+        exit()
 
 
 def _get_section(git, name):
@@ -213,38 +244,8 @@ def _prompt(message, default=None):
     return ret_val
 
 
-def commit(arguments):
-    """Git prepare commit message hook.
-
-    :param arguments: Command line arguments.
-    """
-    commit = arguments.get(0)
-
-    if commit:
-        git = Git()
-        configuration = git.get_configuration("branch", git.branch.name)
-
-        if configuration:
-            try:
-                story_id = configuration["story"]
-
-                with open(commit) as file:
-                    message = file.read()
-
-                message = "[#{0}] {1}".format(story_id, message)
-
-                with open(commit, 'w') as file:
-                    file.write(message)
-            except KeyError:
-                exit()
-        else:
-            exit()
-    else:
-        exit()
-
-
 def finish(arguments):
-    """Handle git request to finish a story branch.
+    """Finish a story branch.
 
     :param arguments: Command line arguments.
     """
@@ -259,6 +260,35 @@ def finish(arguments):
     puts("Deleted branch {0}.".format(branch))
     git.push_branch()
     puts("Finished story #{0}.".format(story_id))
+
+
+def help(arguments):
+    """Display help for continuity.
+
+    :param arguments: Command line arguments (ignored).
+    """
+    puts("usage: continuity [--version]")
+
+    with indent(18):
+        puts("[--help]")
+        puts("<command> [<args>]")
+
+    puts()
+    command_documentation = {}
+    width = 0
+
+    for command, function in commands.iteritems():
+        if not (command.startswith("--") or function.__name__.startswith('_')):
+            documentation = function.__doc__.split('\n', 1)[0][:-1]
+            command_documentation[command] = documentation
+            width = len(command) if len(command) > width else width
+
+    puts("The continuity commands are:")
+
+    with indent():
+        for command in sorted(command_documentation):
+            documentation = command_documentation[command]
+            puts(columns([command, width + 2], [documentation, None]).rstrip())
 
 
 def init(arguments):
@@ -326,7 +356,7 @@ def init(arguments):
 def main():
     """Main entry point.
     """
-    command = args.get(0)
+    command = args.get(0) or "--help"
 
     if command in commands:
         args.remove(command)
@@ -334,7 +364,7 @@ def main():
 
 
 def review(arguments):
-    """Handle github branch pull request.
+    """Open a GitHub pull request for story branch review.
 
     :param arguments: Command line arguments.
     """
@@ -368,7 +398,7 @@ def review(arguments):
 
 
 def story(arguments):
-    """Handle git branching and story state for the next story in PT.
+    """Handle git branching for Pivotal Tracker stories.
 
     :param arguments: Command line arguments.
     """
@@ -410,7 +440,7 @@ def story(arguments):
 
 
 def task(arguments):
-    """Display the task list for the current story branch.
+    """List and manage story tasks.
 
     :param arguments: Command line arguments.
     """
@@ -427,8 +457,20 @@ def task(arguments):
                 task.description)
         puts(message)
 
+
+def version(arguments):
+    """Display the version of Continuity.
+
+    :param arguments: Command line arguments (ignored).
+    """
+    message = "continuity version {0}".format(__version__)
+    puts(message)
+
+
 commands = {
-    "commit": commit,
+    "--help": help,
+    "--version": version,
+    "commit": _commit,
     "finish": finish,
     "init": init,
     "review": review,

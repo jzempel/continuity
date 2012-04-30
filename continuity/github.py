@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 """
-    github
-    ~~~~~~
+    continuity.github
+    ~~~~~~~~~~~~~~~~~
 
     GitHub API.
 
