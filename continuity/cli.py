@@ -279,7 +279,7 @@ def help(arguments):
 
     for command, function in commands.iteritems():
         if not (command.startswith("--") or function.__name__.startswith('_')):
-            documentation = function.__doc__.split('\n', 1)[0][:-1]
+            documentation = function.__doc__.split("\n\n", 1)[0][:-1]
             command_documentation[command] = documentation
             width = len(command) if len(command) > width else width
 
@@ -333,7 +333,7 @@ def init(arguments):
     aliases = {
         "finish": "!continuity finish \"$@\"",
         "review": "!continuity review \"$@\"",
-        "story": "!continuity story \"$@\"",
+        "start": "!continuity start \"$@\"",
         "task": "!continuity task \"$@\""
     }
     git.set_configuration("alias", **aliases)
@@ -397,8 +397,8 @@ def review(arguments):
         exit(128)
 
 
-def story(arguments):
-    """Handle git branching for Pivotal Tracker stories.
+def start(arguments):
+    """Start a branch linked to a Pivotal Tracker story.
 
     :param arguments: Command line arguments.
     """
@@ -474,6 +474,6 @@ commands = {
     "finish": finish,
     "init": init,
     "review": review,
-    "story": story,
+    "start": start,
     "task": task
 }
