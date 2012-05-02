@@ -20,7 +20,7 @@ setup(
     license=continuity.__license__,
     author=continuity.__author__,
     author_email="jzempel@gmail.com",
-    description="Continuous dev flow using Pivotal Tracker and GitHub.",
+    description="Continuous dev flow through Pivotal Tracker and GitHub.",
     long_description=__doc__,
     packages=["continuity"],
     include_package_data=True,

@@ -1,0 +1,43 @@
+continuity: Continuous dev flow through Pivotal Tracker and GitHub.
+
+Inspired by GitHub Flow (http://j.mp/github-flow)
+
+The Concept
+===========
+
+This is a re-summarization of GitHub Flow:
+- Anything in the 'master' branch is deployable.
+- All new work is created with a 'story' branch off of 'master' (or an
+  integration branch).
+- In process work is regularly committed locally and pushed to a remote 'story'
+  branch.
+- When the 'story' branch is ready for review, open a pull request.
+- Once the 'story' branch is reviewed, merge it into 'master' (or an
+  integration branch).
+- Ideally, 'master' will be deployed as soon as a 'story' is merged and pushed.
+
+The first and last of these points are informed primarily by The Lean Startup
+Movement. If you haven't already, buy and read the book by Eric Ries
+(http://theleanstartup.com). Seriously, do that now. Then come back here when
+you're inspired to continuously build-measure-learn.
+
+The middle four points are covered by continuity. Once a git repository is
+configured for continuity; story management, branching, pull request review, and
+merging are a breeze. And it's all handled at the command line using custom git
+commands. So you're not bouncing around between pivotaltracker.com, github.com,
+and your code in order to get things done.
+
+The Interface
+=============
+
+init
+    Initialize a git repository for use with continuity.
+
+start
+    Start a branch linked to a Pivotal Tracker story.
+
+review
+    Open a GitHub pull request for story branch review.
+
+finish
+    Finish a story branch.
