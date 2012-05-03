@@ -6,6 +6,7 @@ INSTALLER = pyinstaller-1.5.1
 .PHONY: install uninstall clean
 
 install: $(BUILD)/dist/continuity
+	mkdir -p $(DESTDIR)$(bindir)/
 	mv -f $(BUILD)/dist/continuity $(DESTDIR)$(bindir)/continuity
 
 uninstall: clean
