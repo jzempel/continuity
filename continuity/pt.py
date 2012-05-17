@@ -191,6 +191,14 @@ class Story(IDElement):
         return self.child("description").value
 
     @property
+    def estimate(self):
+        """Story estimate accessor.
+        """
+        child = self.child("estimate")
+
+        return int(child.value) if child else None
+
+    @property
     def name(self):
         """Story name accessor.
         """

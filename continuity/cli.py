@@ -334,12 +334,14 @@ def init(arguments):
         for key, value in continuity.iteritems():
             puts("continuity.{0}={1}".format(key, value))
 
-    aliases = {
-        "finish": "!continuity finish \"$@\"",
-        "review": "!continuity review \"$@\"",
-        "start": "!continuity start \"$@\"",
-        "tasks": "!continuity tasks \"$@\""
-    }
+    aliases = {}
+
+    for command, function in commands.iteritems():
+        if not command.startswith('-'):
+            alias = "continuity" if command == "init" else command
+            command = "!continuity {0} \"$@\"".format(function.func_name)
+            aliases[alias] = command
+
     git.set_configuration("alias", **aliases)
     puts()
     puts("Aliased git commands:")
@@ -446,6 +448,42 @@ def start(arguments):
         puts("No estimated stories found in the backlog.")
 
 
+def story(arguments):
+    """Display story branch information.
+
+    :param arguments: Command line arguments.
+    """
+    git = _git()
+    story_id = _get_story_id(git)
+    token = _get_value(git, "pivotal", "api-token")
+    pt = PivotalTracker(token)
+    project_id = _get_value(git, "pivotal", "project-id")
+    filter = "id:{0}".format(story_id)
+    story = pt.get_story(project_id, filter)
+
+    if story:
+        puts(story.name)
+        puts()
+
+        if story.estimate:
+            puts("{0} Estimate: {1:d} points".format(story.type.capitalize(),
+                story.estimate))
+        else:
+            puts(story.type.capitalize())
+
+        if story.description:
+            puts()
+            puts(colored.cyan(story.description))
+
+        puts()
+        puts(colored.white("Requested by {0} on {1}".format(story.requester,
+            story.created.strftime("%d %b %Y, %I:%M%p"))))
+        puts(colored.white(story.url))
+    else:
+        puts("Pivotal Tracker story not found")
+        exit(128)
+
+
 def tasks(arguments):
     """List and manage story tasks.
 
@@ -493,5 +531,6 @@ commands = {
     "init": init,
     "review": review,
     "start": start,
+    "story": story,
     "tasks": tasks
 }
