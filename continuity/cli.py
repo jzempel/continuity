@@ -12,7 +12,8 @@
 from . import __version__
 from .git import Git, GitException
 from .github import GitHub, GitHubException
-from .pt import PivotalTracker
+from .pt import PivotalTracker, Story
+from argparse import ArgumentParser
 from clint import args
 from clint.textui import colored, columns, indent, puts, puts_err
 from getpass import getpass
@@ -252,14 +253,17 @@ def finish(arguments):
     git = _git()
     branch = git.branch.name
     story_id = _get_story_id(git)
+    token = _get_value(git, "pivotal", "api-token")
+    pt = PivotalTracker(token)
+    project_id = _get_value(git, "pivotal", "project-id")
     message = "[finish #{0}]".format(story_id)
     target = _get_section(git, "continuity").get("integration-branch")
     git.merge_branch(target, message)
     puts("Merged branch '{0}' into {1}.".format(branch, git.branch.name))
+    pt.set_story(project_id, story_id, Story.STATE_FINISHED)
+    puts("Finished story #{0}.".format(story_id))
     git.delete_branch(branch)
     puts("Deleted branch {0}.".format(branch))
-    git.push_branch()
-    puts("Finished story #{0}.".format(story_id))
 
 
 def help(arguments):
@@ -334,7 +338,7 @@ def init(arguments):
         "finish": "!continuity finish \"$@\"",
         "review": "!continuity review \"$@\"",
         "start": "!continuity start \"$@\"",
-        "task": "!continuity task \"$@\""
+        "tasks": "!continuity tasks \"$@\""
     }
     git.set_configuration("alias", **aliases)
     puts()
@@ -392,9 +396,12 @@ def review(arguments):
         pull_request = github.create_pull_request(title, description,
                 branch)
         puts("Opened pull request: {0}".format(pull_request["url"]))
-    except GitHubException, e:
+    except GitHubException:
         puts_err("Unable to create pull request.")
         exit(128)
+    except KeyboardInterrupt:
+        puts()
+        puts("Aborted story branch review!")
 
 
 def start(arguments):
@@ -439,7 +446,7 @@ def start(arguments):
         puts("No estimated stories found in the backlog.")
 
 
-def task(arguments):
+def tasks(arguments):
     """List and manage story tasks.
 
     :param arguments: Command line arguments.
@@ -450,6 +457,17 @@ def task(arguments):
     pt = PivotalTracker(token)
     project_id = _get_value(git, "pivotal", "project-id")
     tasks = pt.get_tasks(project_id, story_id)
+    parser = ArgumentParser()
+    parser.add_argument("-x", "--check", metavar="number")
+    parser.add_argument("-o", "--uncheck", metavar="number")
+    namespace = parser.parse_args(arguments.all)
+
+    if namespace.check or namespace.uncheck:
+        number = int(namespace.check or namespace.uncheck) - 1
+        task = tasks[number]
+        checked = True if namespace.check else False
+        task = pt.set_task(project_id, story_id, task.id, checked)
+        tasks[number] = task
 
     for task in tasks:
         checkmark = 'x' if task.is_checked else ' '
@@ -475,5 +493,5 @@ commands = {
     "init": init,
     "review": review,
     "start": start,
-    "task": task
+    "tasks": tasks
 }

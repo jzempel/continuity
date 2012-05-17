@@ -167,6 +167,14 @@ class Story(IDElement):
     :param story: Story DOM element.
     """
 
+    STATE_UNSCHEDULED = "unscheduled"
+    STATE_UNSTARTED = "unstarted"
+    STATE_STARTED = "started"
+    STATE_FINISHED = "finished"
+    STATE_DELIVERED = "delivered"
+    STATE_ACCEPTED = "accepted"
+    STATE_REJECTED = "rejected"
+
     def __init__(self, story):
         super(Story, self).__init__(story)
 
@@ -399,7 +407,7 @@ class PivotalTracker(object):
         """
         project = self.get_project(project_id)
         s = 's' if project.is_secure else ''
-        path = "projects/{0:d}/stories/{1:d}".format(project.id, id)
+        path = "projects/{0:d}/stories/{1:d}".format(project.id, int(id))
         url = self.URI_TEMPLATE.format(s=s, path=path)
         parameters = {"story[current_state]": state}
 
@@ -409,3 +417,29 @@ class PivotalTracker(object):
         story = self.get_xml(url, method="PUT", **parameters)
 
         return Story(story)
+
+    def set_task(self, project_id, story_id, id, checked):
+        """Set the completion of the task for the given ID.
+
+        :param project_id: The ID of the project to use.
+        :param story_id: The ID of the story the task is a part of.
+        :param id: The ID of the task to update.
+        :param checked: ``True`` to check the story as completed, otherwise
+            ``False``.
+        """
+        project = self.get_project(project_id)
+        filter = "id:{0:d}".format(int(story_id))
+        story = self.get_story(project.id, filter)
+        s = 's' if project.is_secure else ''
+        path = "projects/{0:d}/stories/{1:d}/tasks/{2:d}".format(project.id,
+                story.id, int(id))
+        url = self.URI_TEMPLATE.format(s=s, path=path)
+
+        if checked:
+            parameters = {"task[complete]": "true"}
+        else:
+            parameters = {"task[complete]": "false"}
+
+        task = self.get_xml(url, method="PUT", **parameters)
+
+        return Task(task)
