@@ -50,6 +50,12 @@ init
 start (aliased by init as git-start)
     Start a branch linked to a Pivotal Tracker story.
 
+story (aliased by init as git-story)
+    Display story branch information.
+
+tasks (aliased by init as git-tasks)
+    List and manage story tasks.
+
 review (aliased by init as git-review)
     Open a GitHub pull request for story branch review.
 
