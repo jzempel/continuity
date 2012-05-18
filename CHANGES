@@ -1,0 +1,14 @@
+Changelog
+---------
+
+Version 0.2
+^^^^^^^^^^^
+
+* Added 'tasks' command.
+* Added 'story' command.
+* Removed make dependency on virtualenv.
+
+Version 0.1
+^^^^^^^^^^^
+
+* I Am Born.
