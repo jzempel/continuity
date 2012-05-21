@@ -337,7 +337,8 @@ def init(arguments):
     aliases = {}
 
     for command, function in commands.iteritems():
-        if not command.startswith('-'):
+        if not command.startswith('-') and \
+                not function.func_name.startswith('_'):
             alias = "continuity" if command == "init" else command
             command = "!continuity {0} \"$@\"".format(function.func_name)
             aliases[alias] = command
