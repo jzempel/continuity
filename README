@@ -47,6 +47,9 @@ The Interface
 init
     Initialize a git repository for use with continuity.
 
+backlog (aliased by init as git-backlog)
+    List backlog stories.
+
 start (aliased by init as git-start)
     Start a branch linked to a Pivotal Tracker story.
 

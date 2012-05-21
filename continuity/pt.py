@@ -88,6 +88,49 @@ class IDElement(Element):
         return int(value)
 
 
+class Iteration(IDElement):
+    """Pivotal Tracker iteration object.
+
+    :param iteration: Iteration DOM element.
+    """
+
+    def __init__(self, iteration):
+        super(Iteration, self).__init__(iteration)
+
+    @datetime_property
+    def finished(self):
+        """Iteration finished accessor.
+        """
+        return self.child("finish").value
+
+    @property
+    def number(self):
+        """Iteration number accessor.
+        """
+        value = self.child("number").value
+
+        return int(value)
+
+    @datetime_property
+    def started(self):
+        """Iteration started accessor.
+        """
+        return self.child("start").value
+
+    @property
+    def stories(self):
+        """Iteration stories accessor.
+        """
+        ret_val = []
+        stories = self.child("stories")
+
+        for story in stories.children("story"):
+            story = Story(story)
+            ret_val.append(story)
+
+        return ret_val
+
+
 class Member(IDElement):
     """Pivotal Tracker member object.
 
@@ -297,6 +340,29 @@ class PivotalTracker(object):
 
         for project in projects.getElementsByTagName("project"):
             self.projects.append(Project(project))
+
+    def get_backlog(self, project_id, limit=None):
+        """Get a list of stories in the backlog.
+
+        :param project_id: The ID of the project to use.
+        :param limit: Limit the number of iterations to get.
+        """
+        ret_val = []
+        project = self.get_project(project_id)
+        s = 's' if project.is_secure else ''
+        path = "projects/{0:d}/iterations/backlog".format(project.id)
+
+        if limit:
+            path = "{0}?limit={1:d}".format(path, limit)
+
+        url = self.URI_TEMPLATE.format(s=s, path=path)
+        iterations = self.get_xml(url)
+
+        for iteration in iterations.getElementsByTagName("iteration"):
+            iteration = Iteration(iteration)
+            ret_val.extend(iteration.stories)
+
+        return ret_val
 
     def get_project(self, id):
         """Get a project for the given ID.

@@ -18,6 +18,8 @@ from clint import args
 from clint.textui import colored, columns, indent, puts, puts_err
 from getpass import getpass
 from os import chmod
+from pydoc import pipepager
+from StringIO import StringIO
 from sys import exit
 
 
@@ -245,6 +247,44 @@ def _prompt(message, default=None):
     return ret_val
 
 
+def backlog(arguments):
+    """List backlog stories.
+
+    :param arguments: Command line arguments.
+    """
+    git = _git()
+    token = _get_value(git, "pivotal", "api-token")
+    pt = PivotalTracker(token)
+    project_id = _get_value(git, "pivotal", "project-id")
+    project = pt.get_project(project_id)
+    stories = pt.get_backlog(project.id)
+    output = StringIO()
+
+    for story in stories:
+        id = colored.yellow(str(story.id))
+
+        if story.estimate is None:
+            type = story.type.capitalize()
+        elif story.estimate >= 0:
+            type = "{0} ({1:d} points)".format(story.type.capitalize(),
+                    story.estimate)
+        else:
+            type = "{0} (unestimated)".format(story.type.capitalize())
+
+        name = story.name
+
+        if story.owner:
+            for member in project.members:
+                if member.name == story.owner:
+                    name = "{0} ({1})".format(story.name, member.initials)
+                    break
+
+        message = "{0} {1}: {2}\n".format(id, type, name)
+        output.write(message)
+
+    pipepager(output.getvalue(), cmd="less -RS")
+
+
 def finish(arguments):
     """Finish a story branch.
 
@@ -337,8 +377,7 @@ def init(arguments):
     aliases = {}
 
     for command, function in commands.iteritems():
-        if not command.startswith('-') and \
-                not function.func_name.startswith('_'):
+        if not (command.startswith("--") or function.__name__.startswith('_')):
             alias = "continuity" if command == "init" else command
             command = "!continuity {0} \"$@\"".format(function.func_name)
             aliases[alias] = command
@@ -368,6 +407,10 @@ def main():
     if command in commands:
         args.remove(command)
         commands[command].__call__(args)
+    else:
+        message = "continuity: '{0}' is not a continuity command. See 'continuity --help'."  # noqa
+        puts(message.format(command))
+        exit(1)
 
 
 def review(arguments):
@@ -466,11 +509,13 @@ def story(arguments):
         puts(story.name)
         puts()
 
-        if story.estimate:
+        if story.estimate is None:
+            puts(story.type.capitalize())
+        elif story.estimate >= 0:
             puts("{0} Estimate: {1:d} points".format(story.type.capitalize(),
                 story.estimate))
         else:
-            puts(story.type.capitalize())
+            puts("{0} Unestimated.".format(story.type.capitalize()))
 
         if story.description:
             puts()
@@ -527,6 +572,7 @@ def version(arguments):
 commands = {
     "--help": help,
     "--version": version,
+    "backlog": backlog,
     "commit": _commit,
     "finish": finish,
     "init": init,
