@@ -281,8 +281,7 @@ def backlog(arguments):
         message = "{0} {1}: {2}\n".format(id, type, name)
         output.write(message)
 
-    if stories:
-        pipepager(output.getvalue(), cmd="less -FRSX")
+    pipepager(output.getvalue(), cmd="less -FRSX")
 
 
 def finish(arguments):
