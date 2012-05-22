@@ -264,12 +264,11 @@ def backlog(arguments):
         id = colored.yellow(str(story.id))
 
         if story.estimate is None:
-            type = story.type.capitalize()
+            type = story.type.upper()
         elif story.estimate >= 0:
-            type = "{0} ({1:d} points)".format(story.type.capitalize(),
-                    story.estimate)
+            type = "{0} ({1:d})".format(story.type.upper(), story.estimate)
         else:
-            type = "{0} (unestimated)".format(story.type.capitalize())
+            type = "{0} (?)".format(story.type.upper())
 
         name = story.name
 
@@ -282,7 +281,8 @@ def backlog(arguments):
         message = "{0} {1}: {2}\n".format(id, type, name)
         output.write(message)
 
-    pipepager(output.getvalue(), cmd="less -RS")
+    if stories:
+        pipepager(output.getvalue(), cmd="less -FRSX")
 
 
 def finish(arguments):
