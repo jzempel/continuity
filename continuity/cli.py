@@ -454,6 +454,9 @@ def start(arguments):
 
     :param arguments: Command line arguments.
     """
+    parser = ArgumentParser()
+    parser.add_argument("-m", "--mywork", action="store_true")
+    namespace = parser.parse_args(arguments.all)
     git = _git()
     token = _get_value(git, "pivotal", "api-token")
     pt = PivotalTracker(token)
@@ -464,7 +467,7 @@ def start(arguments):
     project_id = _get_value(git, "pivotal", "project-id")
     story = pt.get_story(project_id, filter)
 
-    if not story:
+    if not (story or namespace.mywork):
         filter = "state:unstarted"
         story = pt.get_story(project_id, filter)
 
@@ -488,7 +491,10 @@ def start(arguments):
         else:
             puts("Unable to update story owner.")
     else:
-        puts("No estimated stories found in the backlog.")
+        if namespace.mywork:
+            puts("No estimated stories found in my work.")
+        else:
+            puts("No estimated stories found in the backlog.")
 
 
 def story(arguments):
