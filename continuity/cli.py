@@ -17,7 +17,8 @@ from argparse import ArgumentParser
 from clint import args
 from clint.textui import colored, columns, indent, puts, puts_err
 from getpass import getpass
-from os import chmod
+from os import chmod, rename
+from os.path import exists
 from pydoc import pipepager
 from StringIO import StringIO
 from sys import exit
@@ -390,6 +391,12 @@ def init(arguments):
             puts(command)
 
     filename = "{0}/hooks/prepare-commit-msg".format(git.repo.git_dir)
+
+    if exists(filename):
+        backup = "{0}.bak".format(filename)
+
+        if not exists(backup):
+            rename(filename, backup)
 
     with open(filename, 'w') as hook:
         hook.write('#!/bin/sh\n\ncontinuity commit "$@"')
