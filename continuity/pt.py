@@ -356,9 +356,15 @@ class PivotalTracker(object):
             path = "{0}?limit={1:d}".format(path, limit)
 
         url = self.URI_TEMPLATE.format(s=s, path=path)
-        iterations = self.get_xml(url)
+        xml = self.get_xml(url)
+        iterations = xml.getElementsByTagName("iteration")
 
-        for iteration in iterations.getElementsByTagName("iteration"):
+        if not iterations:
+            url = url.replace("backlog", "current_backlog", 1)
+            xml = self.get_xml(url)
+            iterations = xml.getElementsByTagName("iteration")
+
+        for iteration in iterations:
             iteration = Iteration(iteration)
             ret_val.extend(iteration.stories)
 
