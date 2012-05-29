@@ -1,8 +1,8 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 """
-    run
-    ~~~
+    main
+    ~~~~
 
     Main continuity entry point.
 

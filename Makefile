@@ -25,7 +25,7 @@ $(BUILD)/dist/$(EXENAME): export PYTHONPATH = $(PYTHON_PATH)
 $(BUILD)/dist/$(EXENAME): export VERSIONER_PYTHON_PREFER_32_BIT = yes
 $(BUILD)/dist/$(EXENAME): $(BUILD) | $(INSTALLER)
 	arch -i386 $(PYTHON) -O $(INSTALLER)/Configure.py
-	arch -i386 $(PYTHON) $(INSTALLER)/Makespec.py -F run.py -n $(EXENAME) -o $(BUILD)
+	arch -i386 $(PYTHON) $(INSTALLER)/Makespec.py -F main.py -n $(EXENAME) -o $(BUILD)
 	arch -i386 $(PYTHON) -O $(INSTALLER)/Build.py $(BUILD)/$(EXENAME).spec
 
 $(BUILD):
