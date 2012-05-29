@@ -262,25 +262,26 @@ def backlog(arguments):
     output = StringIO()
 
     for story in stories:
-        id = colored.yellow(str(story.id))
+        if story.state in [Story.STATE_UNSCHEDULED, Story.STATE_UNSTARTED]:
+            id = colored.yellow(str(story.id))
 
-        if story.estimate is None:
-            type = story.type.upper()
-        elif story.estimate >= 0:
-            type = "{0} ({1:d})".format(story.type.upper(), story.estimate)
-        else:
-            type = "{0} (?)".format(story.type.upper())
+            if story.estimate is None:
+                type = story.type.upper()
+            elif story.estimate >= 0:
+                type = "{0} ({1:d})".format(story.type.upper(), story.estimate)
+            else:
+                type = "{0} (?)".format(story.type.upper())
 
-        name = story.name
+            name = story.name
 
-        if story.owner:
-            for member in project.members:
-                if member.name == story.owner:
-                    name = "{0} ({1})".format(story.name, member.initials)
-                    break
+            if story.owner:
+                for member in project.members:
+                    if member.name == story.owner:
+                        name = "{0} ({1})".format(story.name, member.initials)
+                        break
 
-        message = "{0} {1}: {2}\n".format(id, type, name)
-        output.write(message)
+            message = "{0} {1}: {2}\n".format(id, type, name)
+            output.write(message)
 
     pipepager(output.getvalue(), cmd="less -FRSX")
 
