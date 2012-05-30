@@ -448,7 +448,7 @@ def review(arguments):
         branch = _get_value(git, "continuity", "integration-branch")
         pull_request = github.create_pull_request(title, description,
                 branch)
-        puts("Opened pull request: {0}".format(pull_request["url"]))
+        puts("Opened pull request: {0}".format(pull_request["html_url"]))
     except GitHubException:
         puts_err("Unable to create pull request.")
         exit(128)
