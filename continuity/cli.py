@@ -489,6 +489,7 @@ def start(arguments):
         if story.owner == owner:
             try:
                 name = _prompt("Enter branch name")
+                name = '-'.join(name.split())
                 git.create_branch(name)
                 git.set_configuration("branch", name, story=story.id)
                 pt.set_story(project_id, story.id, "started")
