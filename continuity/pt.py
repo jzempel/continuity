@@ -350,7 +350,7 @@ class PivotalTracker(object):
         ret_val = []
         project = self.get_project(project_id)
         s = 's' if project.is_secure else ''
-        path = "projects/{0:d}/iterations/backlog".format(project.id)
+        path = "projects/{0:d}/iterations/current_backlog".format(project.id)
 
         if limit:
             path = "{0}?limit={1:d}".format(path, limit)
@@ -360,7 +360,7 @@ class PivotalTracker(object):
         iterations = xml.getElementsByTagName("iteration")
 
         if not iterations:
-            url = url.replace("backlog", "current_backlog", 1)
+            url = url.replace("current_backlog", "backlog", 1)
             xml = self.get_xml(url)
             iterations = xml.getElementsByTagName("iteration")
 
