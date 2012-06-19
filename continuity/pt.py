@@ -231,7 +231,9 @@ class Story(IDElement):
     def description(self):
         """Story description accessor.
         """
-        return self.child("description").value
+        child = self.child("description")
+
+        return child.value if child else None
 
     @property
     def estimate(self):
