@@ -6,7 +6,7 @@ Version 0.3
 
 * Added 'backlog' command.
 * Added 'story --mywork' command argument.
-* Backup existing prepare-commit-mst hook.
+* Backup existing prepare-commit-msg hook.
 
 Version 0.2
 ^^^^^^^^^^^
