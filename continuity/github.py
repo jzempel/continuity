@@ -26,7 +26,8 @@ class GitHub(object):
     :param token: GitHub OAuth token.
     """
 
-    PATTERN_REPOSITORY = re.compile(r"^.+:(?P<repository>\w+/\w+)\.git$", re.U)
+    expression = r"^.+github\.com[/:](?P<repository>\w+/\w+)\.git$"
+    PATTERN_REPOSITORY = re.compile(expression, re.U)
     URI_TEMPLATE = "https://api.github.com/{0}"
 
     def __init__(self, git, token):
