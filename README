@@ -36,6 +36,11 @@ Simple with pip:
 
 $ pip install continuity
 
+Better with brew:
+
+$ brew tap jzempel/formula
+$ brew install https://raw.github.com/jzempel/homebrew-formula/master/continuity.rb
+
 To configure a repository for continuity, run the following command:
 
 $ continuity init
