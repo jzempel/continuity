@@ -5,6 +5,7 @@ class Continuity < Formula
   url 'https://github.com/jzempel/continuity/tarball/0.3'
   md5 '217107912691935dd15b92b7d4e6e70e'
   head 'https://github.com/jzempel/continuity.git'
+  version '0.3'
 
   # The pyinstaller-built binary complains on strip.
   skip_clean 'bin'
