@@ -16,6 +16,8 @@ from .pt import PivotalTracker, Story
 from argparse import ArgumentParser
 from clint import args
 from clint.textui import colored, columns, indent, puts, puts_err
+from curses.ascii import ctrl, CR, EOT, ETX, isctrl, LF
+from getch.getch import getch
 from getpass import getpass
 from os import chmod, rename
 from os.path import exists
@@ -36,13 +38,18 @@ def _commit(arguments):
         configuration = git.get_configuration("branch", git.branch.name)
 
         if configuration:
+            continuity = git.get_configuration("continuity")
+
             try:
-                story_id = configuration["story"]
+                if continuity.get("tracker") == "github":
+                    number = configuration["issue"]
+                else:
+                    number = configuration["story"]
 
                 with open(commit) as file:
                     message = file.read()
 
-                message = "[#{0}] {1}".format(story_id, message)
+                message = "[#{0}] {1}".format(number, message)
 
                 with open(commit, 'w') as file:
                     file.write(message)
@@ -52,6 +59,161 @@ def _commit(arguments):
             exit()
     else:
         exit()
+
+
+def _filter_issues(github, user, number=None, exclusive=False):
+    """Filter issues for the given parameters.
+
+    :param github: GitHub object instance.
+    :param user: The user to filter by.
+    :param number: Default `None`. The issue number to filter by.
+    :param exclusive: Default `False`. Determine whether to filter for the
+        current user.
+    """
+    ret_val = None
+
+    if number and exclusive:
+        puts("Retrieving issue #{0} from GitHub for {1}…".format(number, user))
+        issue = github.get_issue(number)
+
+        if issue and issue.state == issue.STATE_OPEN and issue.assignee \
+                and issue.assignee == user:
+            ret_val = issue
+    elif number:
+        puts("Retrieving issue #{0} from GitHub…".format(number))
+        issue = github.get_issue(number)
+
+        if issue and issue.state == issue.STATE_OPEN:
+            ret_val = issue
+    elif exclusive:
+        puts("Retrieving next issue from GitHub for {0}…".format(user))
+        issues = _get_issues(github, assignee=user.login)
+
+        if issues:
+            ret_val = issues[0]
+    else:
+        puts("Retrieving next available issue from GitHub…")
+        issues = _get_issues(github)
+
+        for issue in issues:
+            if issue.assignee is None or issue.assignee == user:
+                ret_val = issue
+                break
+
+    return ret_val
+
+
+def _filter_stories(pt, project_id, owner, story_id=None, exclusive=False):
+    """Filter stories for the given parameters.
+
+    :param pt: Pivotal Tracker object instance.
+    :param project_id: The project ID to filter stories for.
+    :param owner: The owner to filter by.
+    :param story_id: Default `None`. The story ID to filter by.
+    :param exclusive: Default `False`. Determine whether to filter for the
+        current user.
+    """
+    if story_id and exclusive:
+        puts("Retrieving story #{0} from Pivotal Tracker for {1}…".format(
+            story_id, owner))
+        filter = "id:{0} owner:{1} state:unstarted,rejected".format(story_id,
+            owner)
+    elif story_id:
+        puts("Retrieving story #{0} from Pivotal Tracker…".format(story_id))
+        filter = "id:{0} state:unstarted,rejected".format(story_id)
+    elif exclusive:
+        puts("Retrieving next story from Pivotal Tracker for {0}…".format(
+            owner))
+        filter = "owner:{0} state:unstarted,rejected".format(owner)
+    else:
+        filter = None
+
+    if filter:
+        ret_val = pt.get_story(project_id, filter)
+    else:
+        puts("Retrieving next available story from Pivotal Tracker…")
+        stories = pt.get_backlog(project_id)
+
+        for story in stories:
+            if story.type in (Story.TYPE_FEATURE, Story.TYPE_BUG,
+                    Story.TYPE_CHORE) and (story.owner is None or
+                    story.owner == owner):
+                ret_val = story
+                break
+        else:
+            ret_val = None
+
+    return ret_val
+
+
+def _get_commands():
+    """Get the available commands.
+    """
+    ret_val = {}
+
+    try:
+        git = Git()
+        configuration = git.get_configuration("continuity")
+
+        if configuration:
+            tracker = configuration.get("tracker", "pivotal")
+        else:
+            tracker = None
+    except GitException:
+        tracker = None
+
+    for command, function in commands.iteritems():
+        if not (command.startswith("--") or function.__name__.startswith('_')):
+            if tracker and ":tracker" in function.__doc__:
+                if ":tracker {0}:".format(tracker) in function.__doc__:
+                    ret_val[command] = function
+            else:
+                ret_val[command] = function
+
+    return ret_val
+
+
+def _get_issue_number(git):
+    """Get the issue number for the current Git branch.
+
+    :param git: Git repository.
+    """
+    configuration = git.get_configuration("branch", git.branch.name)
+
+    if configuration:
+        try:
+            ret_val = configuration["issue"]
+        except KeyError:
+            ret_val = None
+    else:
+        ret_val = None
+
+    if not ret_val:
+        puts_err("fatal: Not an issue branch.")
+        exit(1)
+
+    return ret_val
+
+
+def _get_issues(github, **parameters):
+    """Get a list of issues from GitHub, ordered by milestone.
+
+    :param github: GitHub object instance.
+    :param parameters: Parameter keyword-arguments.
+    """
+    ret_val = []
+    milestones = github.get_milestones()
+
+    for milestone in milestones:
+        parameters["milestone"] = milestone.number
+        issues = github.get_issues(**parameters)
+        ret_val.extend(issues)
+
+    parameters["milestone"] = None
+    issues = github.get_issues(**parameters)
+    ret_val.extend(issues)
+
+    return ret_val
 
 
 def _get_section(git, name):
@@ -105,7 +267,7 @@ def _get_value(git, section, key):
         ret_val = configuration[key]
     except KeyError:
         message = "Missing '{0}.{1}' git configuration.".\
-                format(section, key)
+            format(section, key)
         puts(message)
         exit(1)
 
@@ -132,8 +294,16 @@ def _init_continuity(configuration):
     git = Git()
     branch = configuration.get("integration-branch") or git.branch.name
     branch = _prompt("Integration branch", branch)
+    tracker = configuration.get("tracker")
+    tracker = _prompt("Configure for (P)ivotal Tracker or (G)itHub Issues?",
+            tracker, characters="PG")
 
-    return {"integration-branch": branch}
+    if tracker == 'P':
+        tracker = "pivotal"
+    elif tracker == 'G':
+        tracker = "github"
+
+    return {"integration-branch": branch, "tracker": tracker}
 
 
 def _init_github(configuration, pivotal):
@@ -159,13 +329,15 @@ def _init_github(configuration, pivotal):
             exit(1)
 
     ret_val = {"oauth-token": token}
-    github = GitHub(git, token)
-    hooks = github.get_hooks()
-    token = hooks.get("pivotaltracker", {}).get("config", {}).get("token")
 
-    if not token:
-        token = pivotal["api-token"]
-        github.create_hook("pivotaltracker", token=token)
+    if pivotal:
+        github = GitHub(git, token)
+        hooks = github.get_hooks()
+        token = hooks.get("pivotaltracker", {}).get("config", {}).get("token")
+
+        if not token:
+            token = pivotal["api-token"]
+            github.create_hook("pivotaltracker", token=token)
 
     return ret_val
 
@@ -231,19 +403,68 @@ def _init_pivotal(configuration):
     }
 
 
-def _prompt(message, default=None):
+def _confirm(message, default=False):
+    """Prompt for confirmation.
+
+    :param message: The confirmation message.
+    :param default: Default `False`.
+    """
+    if default is True:
+        options = "Y/n"
+    elif default is False:
+        options = "y/N"
+    else:
+        options = "y/n"
+
+    message = "{0} ({1})".format(message, options)
+    ret_val = _prompt(message, default=default, characters="YN")
+
+    if ret_val == 'Y':
+        ret_val = True
+    elif ret_val == 'N':
+        ret_val = False
+
+    return ret_val
+
+
+def _prompt(message, default=None, characters=None):
     """Prompt for input.
 
+    :param message: The prompt message.
     :param default: Default `None`. The default input value.
+    :param characters: Default `None`. Case-insensitive constraint for single-
+        character input.
     """
-    if default:
+    if isinstance(default, basestring):
         message = "{0} [{1}]".format(message, default)
 
-    while True:
-        ret_val = raw_input("{0}: ".format(message)).strip() or default
+    if characters:
+        puts("{0} ".format(message), newline=False)
+    else:
+        message = "{0}: ".format(message)
 
-        if ret_val:
-            break
+    while True:
+        if characters:
+            ret_val = getch()
+
+            if default is not None and ret_val in (chr(CR), chr(LF)):
+                puts()
+                ret_val = default
+                break
+            if ret_val in characters.lower() or ret_val in characters.upper():
+                puts()
+
+                if ret_val not in characters:
+                    ret_val = ret_val.swapcase()
+
+                break
+            elif isctrl(ret_val) and ctrl(ret_val) in (chr(ETX), chr(EOT)):
+                raise KeyboardInterrupt()
+        else:
+            ret_val = raw_input(message).strip() or default
+
+            if ret_val:
+                break
 
     return ret_val
 
@@ -252,6 +473,8 @@ def backlog(arguments):
     """List backlog stories.
 
     :param arguments: Command line arguments.
+
+    :tracker pivotal:
     """
     git = _git()
     token = _get_value(git, "pivotal", "api-token")
@@ -287,22 +510,33 @@ def backlog(arguments):
 
 
 def finish(arguments):
-    """Finish a story branch.
+    """Finish a story/issue branch.
 
     :param arguments: Command line arguments.
     """
     git = _git()
+    tracker = _get_section(git, "continuity").get("tracker", "pivotal")
+
+    if tracker == "github":
+        number = _get_issue_number(git)
+        verb = "close"
+    else:
+        number = _get_story_id(git)
+        verb = "finish"
+
     branch = git.branch.name
-    story_id = _get_story_id(git)
-    token = _get_value(git, "pivotal", "api-token")
-    pt = PivotalTracker(token)
-    project_id = _get_value(git, "pivotal", "project-id")
-    message = "[finish #{0}]".format(story_id)
     target = _get_section(git, "continuity").get("integration-branch")
+    message = "[{0} #{1}]".format(verb, number)
     git.merge_branch(target, message)
     puts("Merged branch '{0}' into {1}.".format(branch, git.branch.name))
-    pt.set_story(project_id, story_id, Story.STATE_FINISHED)
-    puts("Finished story #{0}.".format(story_id))
+
+    if tracker == "pivotal":
+        token = _get_value(git, "pivotal", "api-token")
+        pt = PivotalTracker(token)
+        project_id = _get_value(git, "pivotal", "project-id")
+        pt.set_story(project_id, number, Story.STATE_FINISHED)
+        puts("Finished story #{0}.".format(number))
+
     git.delete_branch(branch)
     puts("Deleted branch {0}.".format(branch))
 
@@ -319,14 +553,15 @@ def help(arguments):
         puts("<command> [<args>]")
 
     puts()
+
+    commands = _get_commands()
     command_documentation = {}
     width = 0
 
     for command, function in commands.iteritems():
-        if not (command.startswith("--") or function.__name__.startswith('_')):
-            documentation = function.__doc__.split("\n\n", 1)[0][:-1]
-            command_documentation[command] = documentation
-            width = len(command) if len(command) > width else width
+        documentation = function.__doc__.split("\n\n", 1)[0][:-1]
+        command_documentation[command] = documentation
+        width = len(command) if len(command) > width else width
 
     puts("The continuity commands are:")
 
@@ -346,15 +581,20 @@ def init(arguments):
     try:
         puts("Enter values or accept [defaults] with Enter.")
         puts()
-        configuration = git.get_configuration("pivotal")
-        pivotal = _init_pivotal(configuration)
-        puts()
-        configuration = git.get_configuration("github")
-        github = _init_github(configuration, pivotal)
-        puts()
         configuration = git.get_configuration("continuity")
         continuity = _init_continuity(configuration)
-    except KeyboardInterrupt:
+        puts()
+
+        if continuity["tracker"] == "pivotal":
+            configuration = git.get_configuration("pivotal")
+            pivotal = _init_pivotal(configuration)
+            puts()
+        else:
+            pivotal = {}
+
+        configuration = git.get_configuration("github")
+        github = _init_github(configuration, pivotal)
+    except (KeyboardInterrupt, EOFError):
         puts()
         puts("Initialization aborted. Changes NOT saved.")
         exit()
@@ -375,13 +615,13 @@ def init(arguments):
         for key, value in continuity.iteritems():
             puts("continuity.{0}={1}".format(key, value))
 
+    commands = _get_commands()
     aliases = {}
 
     for command, function in commands.iteritems():
-        if not (command.startswith("--") or function.__name__.startswith('_')):
-            alias = "continuity" if command == "init" else command
-            command = "!continuity {0} \"$@\"".format(function.func_name)
-            aliases[alias] = command
+        alias = "continuity" if command == "init" else command
+        command = "!continuity {0} \"$@\"".format(function.func_name)
+        aliases[alias] = command
 
     git.set_configuration("alias", **aliases)
     puts()
@@ -406,6 +646,62 @@ def init(arguments):
     exit()
 
 
+def issue(arguments):
+    """Display issue branch information.
+
+    :param arguments: Command line arguments.
+
+    :tracker github:
+    """
+    git = _git()
+    token = _get_value(git, "github", "oauth-token")
+    github = GitHub(git, token)
+    number = _get_issue_number(git)
+    issue = github.get_issue(number)
+
+    if issue:
+        puts(issue.title)
+
+        if issue.description:
+            puts()
+            puts(colored.cyan(issue.description))
+
+        puts()
+        puts(colored.white("Created by {0} on {1}".format(issue.user.login,
+            issue.created.strftime("%d %b %Y, %I:%M%p"))))
+        puts(colored.white(issue.url))
+    else:
+        puts("GitHub issue not found")
+        exit(128)
+
+
+def issues(arguments):
+    """List open issues.
+
+    :param arguments: Command line arguments.
+
+    :tracker github:
+    """
+    git = Git()
+    token = _get_value(git, "github", "oauth-token")
+    github = GitHub(git, token)
+    issues = _get_issues(github)
+    output = StringIO()
+
+    for issue in issues:
+        number = colored.yellow(str(issue.number))
+        title = issue.title
+
+        if issue.assignee:
+            login = issue.assignee.login
+            title = "{0} ({1})".format(title, login)
+
+        message = "{0}: {1}\n".format(number, title)
+        output.write(message)
+
+    pipepager(output.getvalue(), cmd="less -FRSX")
+
+
 def main():
     """Main entry point.
     """
@@ -415,34 +711,38 @@ def main():
         args.remove(command)
         commands[command].__call__(args)
     else:
-        message = "continuity: '{0}' is not a continuity command. See 'continuity --help'."  # noqa
+        message = "continuity: '{0}' is not a continuity command. See 'continuity --help'."  # NOQA
         puts(message.format(command))
         exit(1)
 
 
 def review(arguments):
-    """Open a GitHub pull request for story branch review.
+    """Open a GitHub pull request for story/issue branch review.
 
     :param arguments: Command line arguments.
     """
     git = _git()
-    story_id = _get_story_id(git)
-    token = _get_value(git, "pivotal", "api-token")
-    pt = PivotalTracker(token)
-    project_id = _get_value(git, "pivotal", "project-id")
+    tracker = _get_section(git, "continuity").get("tracker", "pivotal")
     token = _get_value(git, "github", "oauth-token")
 
     try:
         github = GitHub(git, token)
         title = _prompt("Pull request title", git.branch.name)
         description = raw_input("Pull request description (optional): ")
-        story = pt.get_story(project_id, story_id)
+        puts("Creating pull request…")
 
-        if story:
-            if description:
-                "{0}\n\n{1}".format(story.url, description)
-            else:
-                description = story.url
+        if tracker == "pivotal":
+            token = _get_value(git, "pivotal", "api-token")
+            pt = PivotalTracker(token)
+            project_id = _get_value(git, "pivotal", "project-id")
+            story_id = _get_story_id(git)
+            story = pt.get_story(project_id, story_id)
+
+            if story:
+                if description:
+                    "{0}\n\n{1}".format(story.url, description)
+                else:
+                    description = story.url
 
         git.push_branch()
         branch = _get_value(git, "continuity", "integration-branch")
@@ -452,64 +752,116 @@ def review(arguments):
     except GitHubException:
         puts_err("Unable to create pull request.")
         exit(128)
-    except KeyboardInterrupt:
+    except (KeyboardInterrupt, EOFError):
         puts()
-        puts("Aborted story branch review!")
+        puts("Aborted branch review!")
 
 
 def start(arguments):
-    """Start a branch linked to a Pivotal Tracker story.
+    """Start a branch linked to a story/issue.
 
     :param arguments: Command line arguments.
     """
-    parser = ArgumentParser()
-    parser.add_argument("-m", "--mywork", action="store_true")
-    namespace = parser.parse_args(arguments.all)
     git = _git()
-    token = _get_value(git, "pivotal", "api-token")
-    pt = PivotalTracker(token)
-    owner = _get_value(git, "pivotal", "owner")
-    filter = "owner:{0} state:unstarted,rejected".format(owner)
-    puts("Retrieving next story from Pivotal Tracker for {0}…".\
-            format(owner))
-    project_id = _get_value(git, "pivotal", "project-id")
-    story = pt.get_story(project_id, filter)
+    tracker = _get_section(git, "continuity").get("tracker", "pivotal")
+    parser = ArgumentParser()
 
-    if not (story or namespace.mywork):
-        filter = "state:unstarted"
-        story = pt.get_story(project_id, filter)
-
-    if story:
-        puts("Story: {0}".format(story.name))
-
-        if story.owner != owner:
-            story = pt.set_story(project_id, story.id, story.state, owner)
-
-        # Verify that owner got the story.
-        if story.owner == owner:
-            try:
-                name = _prompt("Enter branch name")
-                name = '-'.join(name.split())
-                git.create_branch(name)
-                git.set_configuration("branch", name, story=story.id)
-                pt.set_story(project_id, story.id, "started")
-                puts("Switched to a new branch '{0}'".format(name))
-            except KeyboardInterrupt:
-                puts()
-                puts("Aborted story branch!")
-        else:
-            puts("Unable to update story owner.")
+    if tracker == "github":
+        parser.add_argument("-n", "--number", help="start the specified issue",
+                type=int)
+        parser.add_argument("-u", "--assignedtoyou", action="store_true",
+                help="only start issues assigned to you")
     else:
-        if namespace.mywork:
-            puts("No estimated stories found in my work.")
+        parser.add_argument("-i", "--id", help="start the specified story",
+                type=int)
+        parser.add_argument("-u", "--mywork", action="store_true",
+                help="only start stories owned by you")
+
+    namespace = parser.parse_args(arguments.all)
+
+    if tracker == "github":
+        token = _get_value(git, "github", "oauth-token")
+        github = GitHub(git, token)
+        user = github.get_user()
+        issue = _filter_issues(github, user, namespace.number,
+                namespace.assignedtoyou)
+
+        if issue:
+            puts("Issue: {0}".format(issue.title))
+
+            if issue.assignee is None:
+                issue = github.set_issue(issue.number, assignee=user.login)
+
+            # Verify that user got the issue.
+            if issue.assignee == user:
+                try:
+                    name = _prompt("Enter branch name")
+                    name = '-'.join(name.split())
+                    git.create_branch(name)
+                    git.set_configuration("branch", name, issue=issue.number)
+                    puts("Switched to a new branch '{0}'".format(name))
+                except (KeyboardInterrupt, EOFError):
+                    puts()
+                    puts("Aborted issue branch!")
+            else:
+                puts("Unable to update issue assignee.")
         else:
-            puts("No estimated stories found in the backlog.")
+            if namespace.number and namespace.assignedtoyou:
+                puts("No open issue #{0} found assigned to you.".format(
+                    namespace.number))
+            elif namespace.number:
+                puts("No open issue #{0} found.".format(namespace.number))
+            elif namespace.assignedtoyou:
+                puts("No open issues found assigned to you.")
+            else:
+                puts("No open issues found.")
+    else:
+        token = _get_value(git, "pivotal", "api-token")
+        pt = PivotalTracker(token)
+        project_id = _get_value(git, "pivotal", "project-id")
+        owner = _get_value(git, "pivotal", "owner")
+        story = _filter_stories(pt, project_id, owner, namespace.id,
+                namespace.mywork)
+
+        if story:
+            puts("Story: {0}".format(story.name))
+
+            if story.owner is None:
+                story = pt.set_story(project_id, story.id, story.state, owner)
+
+            # Verify that owner got the story.
+            if story.owner == owner:
+                try:
+                    name = _prompt("Enter branch name")
+                    name = '-'.join(name.split())
+                    git.create_branch(name)
+                    git.set_configuration("branch", name, story=story.id)
+                    pt.set_story(project_id, story.id, "started")
+                    puts("Switched to a new branch '{0}'".format(name))
+                except (KeyboardInterrupt, EOFError):
+                    puts()
+                    puts("Aborted story branch!")
+            else:
+                puts("Unable to update story owner.")
+        else:
+            if namespace.id and namespace.mywork:
+                puts("No estimated story {0} found assigned to you.".format(
+                    namespace.id))
+            elif namespace.id:
+                puts("No estimated story {0} found in the backlog.".format(
+                    namespace.id))
+            elif namespace.mywork:
+                puts("No estimated stories found in my work.")
+            else:
+                puts("No estimated stories found in the backlog.")
 
 
 def story(arguments):
     """Display story branch information.
 
     :param arguments: Command line arguments.
+
+    :tracker pivotal:
     """
     git = _git()
     story_id = _get_story_id(git)
@@ -548,6 +900,8 @@ def tasks(arguments):
     """List and manage story tasks.
 
     :param arguments: Command line arguments.
+
+    :tracker pivotal:
     """
     git = _git()
     story_id = _get_story_id(git)
@@ -590,6 +944,8 @@ commands = {
     "commit": _commit,
     "finish": finish,
     "init": init,
+    "issue": issue,
+    "issues": issues,
     "review": review,
     "start": start,
     "story": story,

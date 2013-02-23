@@ -1,4 +1,4 @@
-continuity: Continuous dev flow through Pivotal Tracker and GitHub.
+continuity: Continuous dev flow via GitHub Issues or Pivotal Tracker.
 
 Inspired by GitHub Flow (http://j.mp/github-flow)
 
@@ -8,14 +8,15 @@ The Concept
 
 This is a re-summarization of GitHub Flow:
 - Anything in the 'master' branch is deployable.
-- All new work is created with a 'story' branch off of 'master' (or an
-  integration branch).
+- All new work is created with a 'story' or 'issue' branch off of 'master' (or
+  an integration branch).
 - In process work is regularly committed locally and pushed to a remote 'story'
-  branch.
+  or 'issue' branch.
 - When the 'story' branch is ready for review, open a pull request.
 - Once the 'story' branch is reviewed, merge it into 'master' (or an
   integration branch).
-- Ideally, 'master' will be deployed as soon as a 'story' is merged and pushed.
+- Ideally, 'master' will be deployed as soon as a 'story' or 'issue' is merged
+  and pushed.
 
 The first and last of these points are informed primarily by The Lean Startup
 Movement. If you haven't already, buy and read the book by Eric Ries
@@ -23,9 +24,9 @@ Movement. If you haven't already, buy and read the book by Eric Ries
 you're inspired to continuously build-measure-learn.
 
 The middle four points are covered by continuity. Once a git repository is
-configured for continuity; story management, branching, pull request review, and
+configured for continuity; issue management, branching, pull request review, and
 merging are a breeze. And it's all handled at the command line using custom git
-commands. So you're not bouncing around between pivotaltracker.com, github.com,
+commands. So you're not bouncing around between github.com, pivotaltracker.com,
 and your code in order to get things done. Stay in the zone!
 
 
@@ -52,20 +53,30 @@ The Interface
 init
     Initialize a git repository for use with continuity.
 
+start (aliased by init as git-start)
+    Start a branch linked to a story/issue.
+
+review (aliased by init as git-review)
+    Open a GitHub pull request for story/issue branch review.
+
+finish (aliased by init as git-finish)
+    Finish a story/issue branch.
+
+* with GitHub Issues configuration:
+
+issues (aliased by init as git-issues)
+    List open issues.
+
+issue (aliased by init as git-issue)
+    Display branch information.
+
+* with Pivotal Tracker configuration:
+
 backlog (aliased by init as git-backlog)
     List backlog stories.
-
-start (aliased by init as git-start)
-    Start a branch linked to a Pivotal Tracker story.
 
 story (aliased by init as git-story)
     Display story branch information.
 
 tasks (aliased by init as git-tasks)
     List and manage story tasks.
-
-review (aliased by init as git-review)
-    Open a GitHub pull request for story branch review.
-
-finish (aliased by init as git-finish)
-    Finish a story branch.

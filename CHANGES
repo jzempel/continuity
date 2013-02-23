@@ -1,6 +1,13 @@
 Changelog
 ---------
 
+Version 0.4
+^^^^^^^^^^^
+
+* Configure for either Pivotal Tracker or GitHub Issues.
+* Added 'story --id' command argument.
+* Prevent pwn3d stories.
+
 Version 0.3
 ^^^^^^^^^^^
 

@@ -9,9 +9,251 @@
     :license: BSD, see LICENSE for more details.
 """
 
+from __future__ import division
+from datetime import datetime
 from json import dumps, loads
 from requests import request, RequestException
 import re
+
+
+class datetime_property(object):
+    """Date/time property decorator.
+
+    :param function: The function to decorate.
+    """
+
+    FORMAT_DATETIME = "%Y-%m-%dT%H:%M:%SZ"
+
+    def __init__(self, function):
+        self.function = function
+
+    def __get__(self, instance, owner):
+        """Attribute accessor - converts a GitHub date/time value into a Python
+        datetime object.
+
+        :param instance: The instance to get an attribute for.
+        :param owner: The owner class.
+        """
+        try:
+            value = self.function(instance)
+            ret_val = datetime.strptime(value, self.FORMAT_DATETIME)
+        except AttributeError:
+            ret_val = None
+
+        return ret_val
+
+
+class DataObject(object):
+    """GitHub data object.
+
+    :param data: Object data dictionary.
+    """
+
+    def __init__(self, data):
+        self.data = data
+
+
+class IDObject(DataObject):
+    """GitHub ID object.
+    """
+
+    def __cmp__(self, other):
+        """Compare ID objects.
+
+        :param other: The object to compare to.
+        """
+        return self.id.__cmp__(other.id)
+
+    def __hash__(self):
+        """ID object hash value.
+        """
+        return self.id
+
+    @property
+    def id(self):
+        """ID accessor.
+        """
+        return self.data.get("id")
+
+
+class Issue(IDObject):
+    """GitHub issue object.
+    """
+
+    STATE_CLOSED = "closed"
+    STATE_OPEN = "open"
+
+    @property
+    def assignee(self):
+        """Issue assignee accessor.
+        """
+        user = self.data.get("assignee")
+
+        return User(user) if user else None
+
+    @datetime_property
+    def created(self):
+        """Issue created accessor.
+        """
+        return self.data.get("created_at")
+
+    @property
+    def description(self):
+        """Issue description accessor.
+        """
+        return self.data.get("body")
+
+    @property
+    def milestone(self):
+        """Issue milestone accessor.
+        """
+        milestone = self.data.get("milestone")
+
+        return Milestone(milestone) if milestone else None
+
+    @property
+    def number(self):
+        """Issue number accessor.
+        """
+        return self.data.get("number")
+
+    @property
+    def state(self):
+        """Issue state accessor.
+        """
+        return self.data.get("state")
+
+    @property
+    def title(self):
+        """Issue title accessor.
+        """
+        return self.data.get("title")
+
+    @datetime_property
+    def updated(self):
+        """Issue updated accessor.
+        """
+        return self.data.get("updated_at")
+
+    @property
+    def url(self):
+        """Issue URL accessor.
+        """
+        return self.data.get("html_url")
+
+    @property
+    def user(self):
+        """Issue user accessor.
+        """
+        user = self.data.get("user")
+
+        return User(user)
+
+
+class Milestone(IDObject):
+    """GitHub milestone object.
+    """
+
+    STATE_CLOSED = "closed"
+    STATE_OPEN = "open"
+
+    @property
+    def closed_issues(self):
+        """Milestone closed issues count.
+        """
+        return self.data.get("closed_issues")
+
+    @property
+    def completion(self):
+        """Milestone completion accessor.
+        """
+        total_issues = self.open_issues + self.closed_issues
+
+        return self.closed_issues / total_issues
+
+    @datetime_property
+    def created(self):
+        """Milestone created accessor.
+        """
+        return self.data.get("created_at")
+
+    @property
+    def description(self):
+        """Milestone description accessor.
+        """
+        return self.data.get("description")
+
+    @datetime_property
+    def due(self):
+        """Milestone due accessor.
+        """
+        return self.data.get("due_on")
+
+    @property
+    def number(self):
+        """Milestone number accessor.
+        """
+        return self.data.get("number")
+
+    @property
+    def open_issues(self):
+        """Milestone open issue count.
+        """
+        return self.data.get("open_issues")
+
+    @property
+    def state(self):
+        """Milestone state accessor.
+        """
+        return self.data.get("state")
+
+    @property
+    def title(self):
+        """Milestone title accessor.
+        """
+        return self.data.get("title")
+
+    @datetime_property
+    def updated(self):
+        """Milestone updated accessor.
+        """
+        return self.data.get("updated_at")
+
+    @property
+    def url(self):
+        """Milestone URL accessor.
+        """
+        return self.data.get("html_url")
+
+    @property
+    def user(self):
+        """Milestone user accessor.
+        """
+        user = self.data.get("creator")
+
+        return User(user)
+
+
+class User(IDObject):
+    """GitHub user object.
+    """
+
+    def __str__(self):
+        """Get a string representation of this User.
+        """
+        return self.login
+
+    @property
+    def login(self):
+        """User login accessor.
+        """
+        return self.data.get("login")
+
+    @property
+    def url(self):
+        """User URL accessor.
+        """
+        return self.data.get("html_url")
 
 
 class GitHubException(Exception):
@@ -47,14 +289,10 @@ class GitHub(object):
         match = re.match(self.PATTERN_REPOSITORY, self.git.remote.url)
         repository = match.group("repository")
         path = "repos/{0}/{1}".format(repository, resource)
-        headers = kwargs.get("headers", {})
-        headers["Authorization"] = "token {0}".format(self.token)
-        kwargs["headers"] = headers
 
-        return GitHub._request(method, path, **kwargs)
+        return self._request(method, path, **kwargs)
 
-    @staticmethod
-    def _request(method, resource, **kwargs):
+    def _request(self, method, resource, **kwargs):
         """Send a GitHub request.
 
         :param method: The HTTP method.
@@ -63,9 +301,17 @@ class GitHub(object):
         """
         url = GitHub.URI_TEMPLATE.format(resource)
         kwargs["verify"] = False
+        headers = kwargs.get("headers", {})
+        headers["Authorization"] = "token {0}".format(self.token)
+        kwargs["headers"] = headers
 
         if "data" in kwargs:
             kwargs["data"] = dumps(kwargs["data"])
+
+        if "params" in kwargs:
+            for key, value in kwargs["params"].items():
+                if value is None:
+                    kwargs["params"][key] = "none"
 
         response = request(method, url, **kwargs)
 
@@ -134,6 +380,8 @@ class GitHub(object):
         return ret_val
 
     def get_hooks(self):
+        """Get hooks.
+        """
         ret_val = {}
         hooks = self._repo_request("get", "hooks")
 
@@ -143,3 +391,97 @@ class GitHub(object):
             ret_val[name] = hook
 
         return ret_val
+
+    def get_issue(self, number):
+        """Get an issue.
+
+        :param number: The number of the issue to get.
+        """
+        resource = "issues/{0}".format(number)
+
+        try:
+            issue = self._repo_request("get", resource)
+            ret_val = Issue(issue)
+        except GitHubException:
+            ret_val = None
+
+        return ret_val
+
+    def get_issues(self, **parameters):
+        """Get issues.
+
+        :param parameters: Parameter keyword-arguments.
+        """
+        ret_val = []
+        parameters.setdefault("direction", "asc")
+        issues = self._repo_request("get", "issues", params=parameters)
+
+        for issue in issues:
+            ret_val.append(Issue(issue))
+
+        return ret_val
+
+    def get_milestone(self, number, **parameters):
+        """Get a milestone.
+
+        :param number: The number of the milestone to get.
+        """
+        resource = "milestones/{0}".format(number)
+
+        try:
+            milestone = self._repo_request("get", resource)
+            ret_val = Milestone(milestone)
+        except GitHubException:
+            ret_val = None
+
+        return ret_val
+
+    def get_milestones(self, **parameters):
+        """Get milestones.
+
+        :param parameters: Parameter keyword-arguments.
+        """
+        ret_val = []
+        milestones = self._repo_request("get", "milestones", params=parameters)
+
+        for milestone in milestones:
+            ret_val.append(Milestone(milestone))
+
+        return ret_val
+
+    def get_user(self, login=None):
+        """Get a user.
+
+        :param login: Default `None`. Optional user login, otherwise get the
+            authenticated user.
+        """
+        resource = "users/{0}".format(login) if login else "user"
+
+        try:
+            user = self._request("get", resource)
+            ret_val = User(user)
+        except GitHubException:
+            ret_val = None
+
+        return ret_val
+
+    def set_issue(self, number, state=None, assignee=None):
+        """Set the state of the issue for the given number.
+
+        :param number: The number of the issue to update.
+        :param state: Default `None`. The updated story state: ``'open'`` or
+            ``'closed'``.
+        :param assignee: Default `None`. The user login of the issue assignee.
+        """
+        data = {}
+
+        if state:
+            data["state"] = state
+
+        if assignee:
+            data["assignee"] = assignee
+
+        resource = "issues/{0}".format(number)
+        issue = self._repo_request("patch", resource, data=data)
+
+        return Issue(issue)

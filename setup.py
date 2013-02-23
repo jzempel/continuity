@@ -30,6 +30,7 @@ setup(
             # "gitdb",
             # "async",
             # "smmap",
+        "py-getch",
         "requests",
             # "certifi",
             # "chardet"

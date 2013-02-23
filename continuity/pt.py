@@ -169,12 +169,7 @@ class Member(IDElement):
 
 class Project(IDElement):
     """Pivotal Tracker project object.
-
-    :param project: Project DOM element.
     """
-
-    def __init__(self, project):
-        super(Project, self).__init__(project)
 
     @property
     def is_secure(self):
@@ -206,8 +201,6 @@ class Project(IDElement):
 
 class Story(IDElement):
     """Pivotal Tracker story object.
-
-    :param story: Story DOM element.
     """
 
     STATE_UNSCHEDULED = "unscheduled"
@@ -217,9 +210,10 @@ class Story(IDElement):
     STATE_DELIVERED = "delivered"
     STATE_ACCEPTED = "accepted"
     STATE_REJECTED = "rejected"
-
-    def __init__(self, story):
-        super(Story, self).__init__(story)
+    TYPE_BUG = "bug"
+    TYPE_CHORE = "chore"
+    TYPE_FEATURE = "feature"
+    TYPE_RELEASE = "release"
 
     @datetime_property
     def created(self):
@@ -290,12 +284,7 @@ class Story(IDElement):
 
 class Task(IDElement):
     """Pivotal Tracker task object.
-
-    :param task: Task DOM element.
     """
-
-    def __init__(self, task):
-        super(Task, self).__init__(task)
 
     @datetime_property
     def created(self):
