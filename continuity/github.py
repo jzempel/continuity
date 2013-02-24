@@ -62,7 +62,7 @@ class IDObject(DataObject):
 
         :param other: The object to compare to.
         """
-        return self.id.__cmp__(other.id)
+        return cmp(self.id, hash(other))
 
     def __hash__(self):
         """ID object hash value.
@@ -104,6 +104,18 @@ class Issue(IDObject):
         return self.data.get("body")
 
     @property
+    def labels(self):
+        """Issue labels accessor.
+        """
+        ret_val = []
+        labels = self.data.get("labels")
+
+        for label in labels:
+            ret_val.append(Label(label))
+
+        return ret_val
+
+    @property
     def milestone(self):
         """Issue milestone accessor.
         """
@@ -116,6 +128,14 @@ class Issue(IDObject):
         """Issue number accessor.
         """
         return self.data.get("number")
+
+    @property
+    def pull_request(self):
+        """Issue pull request accessor.
+        """
+        pull_request = self.data.get("pull_request")
+
+        return PullRequest(pull_request) if pull_request else None
 
     @property
     def state(self):
@@ -148,6 +168,46 @@ class Issue(IDObject):
         user = self.data.get("user")
 
         return User(user)
+
+
+class Label(DataObject):
+    """GitHub label object.
+    """
+
+    def __cmp__(self, other):
+        """Compare label objects.
+
+        :param other: The object to compare to.
+        """
+        return cmp(self.name, str(other))
+
+    def __hash__(self):
+        """Label hash value.
+        """
+        return self.name.__hash__()
+
+    def __str__(self):
+        """Label string representation.
+        """
+        return self.name
+
+    @property
+    def color(self):
+        """Label color accessor.
+        """
+        return self.data.get("color")
+
+    @property
+    def name(self):
+        """Label name accessor.
+        """
+        return self.data.get("name")
+
+    @property
+    def url(self):
+        """Label URL accessor.
+        """
+        return self.data.get("url")
 
 
 class Milestone(IDObject):
@@ -232,6 +292,17 @@ class Milestone(IDObject):
         user = self.data.get("creator")
 
         return User(user)
+
+
+class PullRequest(DataObject):
+    """GitHub pull request object.
+    """
+
+    @property
+    def url(self):
+        """Pull request URL accessor.
+        """
+        return self.data.get("html_url")
 
 
 class User(IDObject):
@@ -322,6 +393,25 @@ class GitHub(object):
 
         return loads(response.content)
 
+    def add_labels(self, number, *names):
+        """Add a labels to an issue.
+
+        :param number: The number of the issue to update.
+        :param names: The label names to add.
+        """
+        ret_val = []
+        resource = "issues/{0}/labels".format(number)
+
+        try:
+            labels = self._repo_request("post", resource, data=names)
+
+            for label in labels:
+                ret_val.append(Label(label))
+        except GitHubException:
+            pass  # GitHub responds with 500 on attempt to add existing label.
+
+        return ret_val
+
     def create_hook(self, name, **kwargs):
         """Create a hook.
 
@@ -351,7 +441,9 @@ class GitHub(object):
             "base": branch or "master"
         }
 
-        return self._repo_request("post", "pulls", data=data)
+        pull_request = self._repo_request("post", "pulls", data=data)
+
+        return PullRequest(pull_request)
 
     @staticmethod
     def create_token(user, password, name, url=None, scopes=["repo"]):
@@ -407,9 +499,11 @@ class GitHub(object):
 
         return ret_val
 
-    def get_issues(self, **parameters):
+    def get_issues(self, pull_requests=False, **parameters):
         """Get issues.
 
+        :param pull_requests: Default `False`. Determine wheter to include
+            pull requests.
         :param parameters: Parameter keyword-arguments.
         """
         ret_val = []
@@ -417,7 +511,8 @@ class GitHub(object):
         issues = self._repo_request("get", "issues", params=parameters)
 
         for issue in issues:
-            ret_val.append(Issue(issue))
+            if pull_requests or issue["pull_request"]["html_url"] is None:
+                ret_val.append(Issue(issue))
 
         return ret_val
 
@@ -464,6 +559,15 @@ class GitHub(object):
             ret_val = None
 
         return ret_val
+
+    def remove_label(self, number, name):
+        """Remove a labe from an issue.
+
+        :param number: The number of the issue to update.
+        :param name: The label to add.
+        """
+        resource = "issues/{0}/labels/{1}".format(number, name)
+        self._repo_request("delete", resource)
 
     def set_issue(self, number, state=None, assignee=None):
         """Set the state of the issue for the given number.

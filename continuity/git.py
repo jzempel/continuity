@@ -103,6 +103,11 @@ class Git(object):
 
         try:
             for name, value in reader.items(section):
+                if value == "true":
+                    value = True
+                elif value == "false":
+                    value = False
+
                 ret_val[name] = value
         except NoSectionError:
             pass
@@ -170,4 +175,7 @@ class Git(object):
             writer.add_section(section)
 
         for option, value in kwargs.items():
+            if value is True or value is False:
+                value = str(value).lower()
+
             writer.set(section, option, value)
