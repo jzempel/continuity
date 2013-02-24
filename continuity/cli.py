@@ -353,11 +353,11 @@ def _init_continuity(configuration):
     elif tracker == 'G':
         tracker = "github"
 
-    exlusive = configuration.get("exclusive", False)
+    exclusive = configuration.get("exclusive", False)
 
     if tracker == "github":
         exclusive = _confirm("Exclude issues not assigned to you?",
-                default=exlusive)
+                default=exclusive)
     else:
         exclusive = _confirm("Exclude stories which you do not own?",
                 default=exclusive)
@@ -658,6 +658,9 @@ def init(arguments):
             puts("github.{0}={1}".format(key, value))
 
         for key, value in continuity.iteritems():
+            if key == "exclusive":
+                value = str(value).lower()
+
             puts("continuity.{0}={1}".format(key, value))
 
     commands = _get_commands()
