@@ -1,7 +1,8 @@
 prefix = /usr/local
 bindir = $(prefix)/bin
+version = 1.5.1
 BUILD = build
-INSTALLER = pyinstaller-1.5.1
+INSTALLER = pyinstaller-$(version)
 PYTHON = python
 
 override EXENAME = continuity
@@ -33,8 +34,8 @@ $(BUILD):
 	@PYTHONPATH=$(PYTHON_PATH) $(PYTHON) setup.py install --home $(BUILD)
 
 $(INSTALLER):
-	curl -o pyinstaller.tar.bz2 http://cloud.github.com/downloads/pyinstaller/pyinstaller/$(INSTALLER).tar.bz2
-	tar xjf pyinstaller.tar.bz2
-	rm -fr pyinstaller.tar.bz2
+	curl -L -o pyinstaller.tar.gz https://github.com/pyinstaller/pyinstaller/archive/v$(version).tar.gz
+	tar xjf pyinstaller.tar.gz
+	rm -fr pyinstaller.tar.gz
 	sed -e "s/del sys\.modules\[fqname\]/if fqname in sys\.modules: del sys\.modules\[fqname\]/" $(INSTALLER)/iu.py > $(INSTALLER)/iu.tmp
 	mv -f $(INSTALLER)/iu.tmp $(INSTALLER)/iu.py
