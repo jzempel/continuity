@@ -426,20 +426,27 @@ class GitHub(object):
 
         return self._repo_request("post", "hooks", data=data)
 
-    def create_pull_request(self, title, description=None, branch=None):
+    def create_pull_request(self, title_or_number, description=None,
+            branch=None):
         """Create a pull request.
 
-        :param title: The title for this pull request.
+        :param title: The title for this pull request or issue number.
         :param description: Default `None`. The optional description of this
             pull request.
         :param branch: Default `None`. The base branch the pull request is for.
         """
         data = {
-            "title": title,
-            "body": description,
             "head": self.git.branch.name,
             "base": branch or "master"
         }
+
+        try:
+            number = int(title_or_number)
+            data["issue"] = number
+        except ValueError:
+            title = str(title_or_number)
+            data["title"] = title
+            data["body"] = description
 
         pull_request = self._repo_request("post", "pulls", data=data)
 

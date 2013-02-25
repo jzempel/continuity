@@ -778,14 +778,20 @@ def review(arguments):
     git = _git()
     tracker = _get_section(git, "continuity").get("tracker", "pivotal")
     token = _get_value(git, "github", "oauth-token")
+    branch = _get_value(git, "continuity", "integration-branch")
 
     try:
         github = GitHub(git, token)
-        title = _prompt("Pull request title", git.branch.name)
-        description = raw_input("Pull request description (optional): ")
-        puts("Creating pull request…")
 
-        if tracker == "pivotal":
+        if tracker == "github":
+            puts("Creating pull request…")
+            git.push_branch()
+            number = _get_issue_number(git)
+            pull_request = github.create_pull_request(number, branch)
+        else:
+            title = _prompt("Pull request title", git.branch.name)
+            description = raw_input("Pull request description (optional): ")
+            puts("Creating pull request…")
             token = _get_value(git, "pivotal", "api-token")
             pt = PivotalTracker(token)
             project_id = _get_value(git, "pivotal", "project-id")
@@ -798,10 +804,10 @@ def review(arguments):
                 else:
                     description = story.url
 
-        git.push_branch()
-        branch = _get_value(git, "continuity", "integration-branch")
-        pull_request = github.create_pull_request(title, description,
-                branch)
+            git.push_branch()
+            pull_request = github.create_pull_request(title, description,
+                    branch)
+
         puts("Opened pull request: {0}".format(pull_request.url))
     except GitHubException:
         puts_err("Unable to create pull request.")
