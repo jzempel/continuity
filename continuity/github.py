@@ -360,10 +360,14 @@ class GitHub(object):
         match = re.match(self.PATTERN_REPOSITORY, self.git.remote.url)
         repository = match.group("repository")
         path = "repos/{0}/{1}".format(repository, resource)
+        headers = kwargs.get("headers", {})
+        headers["Authorization"] = "token {0}".format(self.token)
+        kwargs["headers"] = headers
 
-        return self._request(method, path, **kwargs)
+        return GitHub._request(method, path, **kwargs)
 
-    def _request(self, method, resource, **kwargs):
+    @staticmethod
+    def _request(method, resource, **kwargs):
         """Send a GitHub request.
 
         :param method: The HTTP method.
@@ -372,9 +376,6 @@ class GitHub(object):
         """
         url = GitHub.URI_TEMPLATE.format(resource)
         kwargs["verify"] = False
-        headers = kwargs.get("headers", {})
-        headers["Authorization"] = "token {0}".format(self.token)
-        kwargs["headers"] = headers
 
         if "data" in kwargs:
             kwargs["data"] = dumps(kwargs["data"])
@@ -558,9 +559,10 @@ class GitHub(object):
             authenticated user.
         """
         resource = "users/{0}".format(login) if login else "user"
+        headers = {"Authorization": "token {0}".format(self.token)}
 
         try:
-            user = self._request("get", resource)
+            user = GitHub._request("get", resource, headers=headers)
             ret_val = User(user)
         except GitHubException:
             ret_val = None
