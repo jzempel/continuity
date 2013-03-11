@@ -5,10 +5,10 @@
 
     Continuity API.
 
-    :copyright: 2012 by Jonathan Zempel.
+    :copyright: 2013 by Jonathan Zempel.
     :license: BSD, see LICENSE for more details.
 """
 
 __author__ = "Jonathan Zempel"
 __license__ = "BSD"
-__version__ = "0.4.1"
+__version__ = "0.4.2"

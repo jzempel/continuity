@@ -5,7 +5,7 @@
 
     Continuity command line interface.
 
-    :copyright: 2012 by Jonathan Zempel.
+    :copyright: 2013 by Jonathan Zempel.
     :license: BSD, see LICENSE for more details.
 """
 
@@ -746,11 +746,17 @@ def issues(arguments):
         else:
             title = issue.title
 
-        if issue.assignee:
-            login = issue.assignee.login
-            title = "{0} ({1})".format(title, login)
+        information = issue.assignee
 
-        message = "{0}: {1}\n".format(number, title)
+        if information and issue.milestone:
+            information = "{0}, {1}".format(information, issue.milestone)
+        else:
+            information = issue.milestone
+
+        if information:
+            title = "{0} ({1})".format(title, information)
+
+        message = "{0}: {1}\n".format(number, title.strip())
         output.write(message)
 
     pipepager(output.getvalue(), cmd="less -FRSX")
@@ -839,6 +845,12 @@ def start(arguments):
 
     namespace = ContinuityNamespace(git)
     parser.parse_args(arguments.all, namespace=namespace)
+    integration_branch = _get_value(git, "continuity", "integration-branch")
+
+    if git.branch.name != integration_branch:
+        message = "error: Attempted start from non-integration branch, switch to '{0}'."  # NOQA
+        puts_err(message.format(integration_branch))
+        exit(128)
 
     if tracker == "github":
         token = _get_value(git, "github", "oauth-token")

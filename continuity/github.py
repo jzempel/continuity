@@ -5,7 +5,7 @@
 
     GitHub API.
 
-    :copyright: 2012 by Jonathan Zempel.
+    :copyright: 2013 by Jonathan Zempel.
     :license: BSD, see LICENSE for more details.
 """
 
@@ -82,6 +82,11 @@ class Issue(IDObject):
 
     STATE_CLOSED = "closed"
     STATE_OPEN = "open"
+
+    def __str__(self):
+        """Issue string representation.
+        """
+        return self.title
 
     @property
     def assignee(self):
@@ -216,6 +221,11 @@ class Milestone(IDObject):
 
     STATE_CLOSED = "closed"
     STATE_OPEN = "open"
+
+    def __str__(self):
+        """Milestone string representation.
+        """
+        return self.title
 
     @property
     def closed_issues(self):

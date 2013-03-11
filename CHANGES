@@ -1,6 +1,12 @@
 Changelog
 ---------
 
+Version 0.4.2
+^^^^^^^^^^^^^
+
+* Prevent start from non-integration branch.
+* Add milestone to 'issues' command.
+
 Version 0.4.1
 ^^^^^^^^^^^^^
 
