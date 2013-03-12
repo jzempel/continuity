@@ -5,7 +5,9 @@ Version 0.4.2
 ^^^^^^^^^^^^^
 
 * Prevent start from non-integration branch.
-* Add milestone to 'issues' command.
+* Added milestone to 'issues' & 'issue' commands.
+* Added 'issues --assignedtoyou' command argument.
+* Added 'backlog --mywork' command argument.
 
 Version 0.4.1
 ^^^^^^^^^^^^^

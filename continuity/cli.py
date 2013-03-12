@@ -517,14 +517,21 @@ def backlog(arguments):
     """
     git = _git()
     token = _get_value(git, "pivotal", "api-token")
+    parser = ArgumentParser()
+    parser.add_argument("-m", "--mywork", action="store_true",
+            help="list stories owned by you")
+    namespace = ContinuityNamespace(git)
+    parser.parse_args(arguments.all, namespace=namespace)
     pt = PivotalTracker(token)
+    owner = _get_value(git, "pivotal", "owner")
     project_id = _get_value(git, "pivotal", "project-id")
     project = pt.get_project(project_id)
     stories = pt.get_backlog(project.id)
     output = StringIO()
 
     for story in stories:
-        if story.state in [Story.STATE_UNSCHEDULED, Story.STATE_UNSTARTED]:
+        if story.state in [Story.STATE_UNSCHEDULED, Story.STATE_UNSTARTED] \
+                and (namespace.mywork is False or story.owner == owner):
             id = colored.yellow(str(story.id))
 
             if story.estimate is None:
@@ -710,6 +717,10 @@ def issue(arguments):
     if issue:
         puts(issue.title)
 
+        if issue.milestone:
+            puts()
+            puts("Milestone: {0}".format(issue.milestone))
+
         if issue.description:
             puts()
             puts(colored.cyan(issue.description))
@@ -730,10 +741,21 @@ def issues(arguments):
 
     :tracker github:
     """
-    git = Git()
+    git = _git()
     token = _get_value(git, "github", "oauth-token")
+    parser = ArgumentParser()
+    parser.add_argument("-u", "--assignedtoyou", action="store_true",
+            help="list issues assigned to you")
+    namespace = ContinuityNamespace(git)
+    parser.parse_args(arguments.all, namespace=namespace)
     github = GitHub(git, token)
-    issues = _get_issues(github)
+
+    if namespace.assignedtoyou:
+        user = github.get_user()
+        issues = _get_issues(github, assignee=user.login)
+    else:
+        issues = _get_issues(github)
+
     output = StringIO()
 
     for issue in issues:
@@ -748,8 +770,9 @@ def issues(arguments):
 
         information = issue.assignee
 
-        if information and issue.milestone:
-            information = "{0}, {1}".format(information, issue.milestone)
+        if information:
+            if issue.milestone:
+                information = "{0}, {1}".format(information, issue.milestone)
         else:
             information = issue.milestone
 
