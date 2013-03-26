@@ -404,14 +404,14 @@ class GitHub(object):
 
         return loads(response.content)
 
-    def add_labels(self, number, *names):
+    def add_labels(self, issue, *names):
         """Add a labels to an issue.
 
-        :param number: The number of the issue to update.
+        :param issue: The issue to add labels to.
         :param names: The label names to add.
         """
         ret_val = []
-        resource = "issues/{0}/labels".format(number)
+        resource = "issues/{0}/labels".format(issue.number)
 
         try:
             labels = self._repo_request("post", resource, data=names)
@@ -579,13 +579,13 @@ class GitHub(object):
 
         return ret_val
 
-    def remove_label(self, number, name):
-        """Remove a labe from an issue.
+    def remove_label(self, issue, name):
+        """Remove a label from an issue.
 
-        :param number: The number of the issue to update.
+        :param issue: The issue to add a label to.
         :param name: The label to add.
         """
-        resource = "issues/{0}/labels/{1}".format(number, name)
+        resource = "issues/{0}/labels/{1}".format(issue.number, name)
         self._repo_request("delete", resource)
 
     def set_issue(self, number, state=None, assignee=None):

@@ -332,14 +332,13 @@ class PivotalTracker(object):
         for project in projects.getElementsByTagName("project"):
             self.projects.append(Project(project))
 
-    def get_backlog(self, project_id, limit=None):
+    def get_backlog(self, project, limit=None):
         """Get a list of stories in the backlog.
 
-        :param project_id: The ID of the project to use.
+        :param project: The project to use.
         :param limit: Limit the number of iterations to get.
         """
         ret_val = []
-        project = self.get_project(project_id)
         s = 's' if project.is_secure else ''
         path = "projects/{0:d}/iterations/current_backlog".format(project.id)
 
@@ -380,15 +379,14 @@ class PivotalTracker(object):
         """
         return self.projects
 
-    def get_story(self, project_id, filter):
+    def get_story(self, project, filter):
         """Get the next story for the given filter.
 
-        :param project_id: The ID of the project to use.
+        :param project: The project to use.
         :param filter: The PT API filter. See
             `https://www.pivotaltracker.com/help#howcanasearchberefined` for
             details.
         """
-        project = self.get_project(project_id)
         s = 's' if project.is_secure else ''
         path = "projects/{0:d}/stories".format(project.id)
         url = self.URI_TEMPLATE.format(s=s, path=path)
@@ -404,26 +402,21 @@ class PivotalTracker(object):
 
         return ret_val
 
-    def get_tasks(self, project_id, story_id):
+    def get_tasks(self, project, story):
         """Get the tasks for the given story.
 
-        :param project_id: The ID of the project to use.
-        :param story_id: The ID of the story to use.
+        :param project: The project to use.
+        :param story: The story to use.
         """
         ret_val = []
-        project = self.get_project(project_id)
-        filter = "id:{0:d}".format(int(story_id))
-        story = self.get_story(project.id, filter)
+        s = 's' if project.is_secure else ''
+        path = "projects/{0:d}/stories/{1:d}/tasks".format(project.id,
+                story.id)
+        url = self.URI_TEMPLATE.format(s=s, path=path)
+        tasks = self.get_xml(url)
 
-        if story:
-            s = 's' if project.is_secure else ''
-            path = "projects/{0:d}/stories/{1:d}/tasks".format(project.id,
-                    story.id)
-            url = self.URI_TEMPLATE.format(s=s, path=path)
-            tasks = self.get_xml(url)
-
-            for task in tasks.getElementsByTagName("task"):
-                ret_val.append(Task(task))
+        for task in tasks.getElementsByTagName("task"):
+            ret_val.append(Task(task))
 
         return ret_val
 
@@ -466,19 +459,18 @@ class PivotalTracker(object):
 
         return xml.firstChild
 
-    def set_story(self, project_id, id, state, owner=None):
+    def set_story(self, project, story, state, owner=None):
         """Set the state of the story for the given ID.
 
-        :param project_id: The ID of the project to use.
-        :param id: The ID of the story to update.
+        :param project: The project to use.
+        :param story: The story to update.
         :param state: The updated story state: ``'unscheduled'``,
             ``'unstarted'``, ``'started'``, ``'finished'``, ``'delivered'``,
             ``'accepted'``, or ``'rejected'``.
         :param owner: Default `None`. Optional story owner.
         """
-        project = self.get_project(project_id)
         s = 's' if project.is_secure else ''
-        path = "projects/{0:d}/stories/{1:d}".format(project.id, int(id))
+        path = "projects/{0:d}/stories/{1:d}".format(project.id, story.id)
         url = self.URI_TEMPLATE.format(s=s, path=path)
         parameters = {"story[current_state]": state}
 
@@ -489,21 +481,18 @@ class PivotalTracker(object):
 
         return Story(story)
 
-    def set_task(self, project_id, story_id, id, checked):
-        """Set the completion of the task for the given ID.
+    def set_task(self, project, story, task, checked):
+        """Set the completion of the given task.
 
-        :param project_id: The ID of the project to use.
-        :param story_id: The ID of the story the task is a part of.
-        :param id: The ID of the task to update.
+        :param project: The project to use.
+        :param story: The story the task is a part of.
+        :param task: The task to update.
         :param checked: ``True`` to check the story as completed, otherwise
             ``False``.
         """
-        project = self.get_project(project_id)
-        filter = "id:{0:d}".format(int(story_id))
-        story = self.get_story(project.id, filter)
         s = 's' if project.is_secure else ''
         path = "projects/{0:d}/stories/{1:d}/tasks/{2:d}".format(project.id,
-                story.id, int(id))
+                story.id, task.id)
         url = self.URI_TEMPLATE.format(s=s, path=path)
 
         if checked:
