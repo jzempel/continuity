@@ -27,7 +27,7 @@ class FinishCommand(BaseFinishCommand, GitHubCommand):
         """
         self.github.add_labels(self.issue, "finished")
         self.github.remove_label(self.issue, "started")
-        puts("Finished issue #{0:d}".format(self.issue.number))
+        puts("Finished issue #{0:d}.".format(self.issue.number))
         super(FinishCommand, self).finalize()
 
     def initialize(self, parser):

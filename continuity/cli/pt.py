@@ -120,7 +120,7 @@ class FinishCommand(BaseFinishCommand, PivotalTrackerCommand):
         """Finalize this finish command.
         """
         self.pt.set_story(self.project, self.story, Story.STATE_FINISHED)
-        puts("Finished story #{0:d}".format(self.story.id))
+        puts("Finished story #{0:d}.".format(self.story.id))
         super(FinishCommand, self).finalize()
 
     def initialize(self, parser):
