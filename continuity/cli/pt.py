@@ -326,5 +326,6 @@ commands = {
     "finish": FinishCommand(),
     "review": ReviewCommand(),
     "story": StoryCommand(),
+    "start": StartCommand(),
     "tasks": TasksCommand()
 }

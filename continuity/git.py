@@ -131,7 +131,12 @@ class Git(object):
         else:
             command = [self.git, "merge", commit]
 
-        return self.repo.git.execute(command)
+        try:
+            ret_val = self.repo.git.execute(command)
+        except GitCommandError:
+            raise GitException("Merge conflict"), None, exc_info()[2]
+
+        return ret_val
 
     def push_branch(self, name=None):
         """Push the given branch name.

@@ -277,15 +277,24 @@ class FinishCommand(GitCommand):
         :param namespace: Command-line argument namespace.
         """
         target = self.get_section("continuity").get("integration-branch")
-        self.git.merge_branch(target, self.message)
-        puts("Merged branch '{0}' into {1}.".format(self.branch,
-            self.git.branch.name))
+
+        try:
+            self.git.merge_branch(target, self.message)
+            puts("Merged branch '{0}' into {1}.".format(self.branch,
+                self.git.branch.name))
+        except GitException:
+            for path in self.git.repo.index.unmerged_blobs():
+                puts_err("Merge conflict: {0}".format(path))
 
     def finalize(self):
         """Finalize this finish command.
         """
-        self.git.delete_branch(self.branch)
-        puts("Deleted branch {0}.".format(self.branch))
+        try:
+            self.git.delete_branch(self.branch)
+            puts("Deleted branch {0}.".format(self.branch))
+        except GitException:
+            puts_err("conflict: Fix conflicts and then commit the result.")
+            exit(1)
 
     def initialize(self, parser):
         """Initialize this finish command.
@@ -592,7 +601,7 @@ class StartCommand(GitCommand):
         branch = self.get_value("continuity", "integration-branch")
 
         if branch != self.git.branch.name:
-            message = "error: Attempted start from non-integration branch, switch to '{0}'."  # NOQA
+            message = "error: Attempted start from non-integration branch; switch to '{0}'."  # NOQA
             puts_err(message.format(branch))
             exit(1)
 

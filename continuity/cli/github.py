@@ -244,5 +244,6 @@ commands = {
     "finish": FinishCommand(),
     "issue": IssueCommand(),
     "issues": IssuesCommand(),
-    "review": ReviewCommand()
+    "review": ReviewCommand(),
+    "start": StartCommand()
 }
