@@ -589,14 +589,18 @@ class StartCommand(GitCommand):
 
         :param namespace: Command-line argument namespace.
         """
-        name = prompt("Enter branch name")
-        ret_val = '-'.join(name.split())
+        if self.branch == self.git.branch.name:
+            name = prompt("Enter branch name")
+            ret_val = '-'.join(name.split())
 
-        try:
-            self.git.create_branch(ret_val)
-            puts("Switched to a new branch '{0}'".format(ret_val))
-        except GitException, e:
-            exit(e)
+            try:
+                self.git.create_branch(ret_val)
+                puts("Switched to a new branch '{0}'".format(ret_val))
+            except GitException, e:
+                exit(e)
+        else:
+            message = "error: Attempted start from non-integration branch; switch to '{0}'."  # NOQA
+            exit(message.format(self.branch))
 
         return ret_val
 
@@ -605,11 +609,7 @@ class StartCommand(GitCommand):
 
         :param parser: Command-line argument parser.
         """
-        branch = self.get_value("continuity", "integration-branch")
-
-        if branch != self.git.branch.name:
-            message = "error: Attempted start from non-integration branch; switch to '{0}'."  # NOQA
-            exit(message.format(branch))
+        self.branch = self.get_value("continuity", "integration-branch")
 
 
 class VersionCommand(object):
