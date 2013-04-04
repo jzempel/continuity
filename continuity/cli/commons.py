@@ -115,8 +115,7 @@ class GitCommand(object):
 
         if not ret_val:
             message = "Missing '{0}' git configuration.".format(name)
-            puts_err(message)
-            exit(1)
+            exit(message)
 
         return ret_val
 
@@ -133,8 +132,7 @@ class GitCommand(object):
         except KeyError:
             message = "Missing '{0}.{1}' git configuration.".format(section,
                     key)
-            puts_err(message)
-            exit(1)
+            exit(message)
 
         return ret_val
 
@@ -222,8 +220,7 @@ class GitHubCommand(GitCommand):
             ret_val = None
 
         if not ret_val:
-            puts_err("fatal: Not an issue branch.")
-            exit(1)
+            exit("fatal: Not an issue branch.")
 
         return ret_val
 
@@ -293,8 +290,7 @@ class FinishCommand(GitCommand):
             self.git.delete_branch(self.branch)
             puts("Deleted branch {0}.".format(self.branch))
         except GitException:
-            puts_err("conflict: Fix conflicts and then commit the result.")
-            exit(1)
+            exit("conflict: Fix conflicts and then commit the result.")
 
     def initialize(self, parser):
         """Initialize this finish command.
@@ -428,6 +424,7 @@ class InitCommand(GitCommand):
 
         puts()
         self.github = self.initialize_github()
+        commands = common_commands
         module = __import__(name, fromlist=["commands"])
         commands.update(module.commands)
         self.aliases = {}
@@ -483,8 +480,7 @@ class InitCommand(GitCommand):
             token = GitHub.create_token(user, password, name, url)
 
             if not token:
-                puts_err("Invalid GitHub credentials.")
-                exit(1)
+                exit("Invalid GitHub credentials.")
 
         return {"oauth-token": token}
 
@@ -505,8 +501,7 @@ class InitCommand(GitCommand):
             token = PivotalTracker.get_token(email, password)
 
             if not token:
-                puts_err("Invalid Pivotal Tracker credentials.")
-                exit(1)
+                exit("Invalid Pivotal Tracker credentials.")
 
         pt = PivotalTracker(token)
         projects = pt.get_projects()
@@ -532,14 +527,11 @@ class InitCommand(GitCommand):
                         owner = member.name
                         break
                 else:
-                    puts_err("Invalid project member email.")
-                    exit(1)
+                    exit("Invalid project member email.")
             else:
-                puts_err("Invalid project ID.")
-                exit(1)
+                exit("Invalid project ID.")
         else:
-            puts_err("No Pivotal Tracker projects found.")
-            exit(1)
+            exit("No Pivotal Tracker projects found.")
 
         return {
             "api-token": token,
@@ -565,8 +557,7 @@ class ReviewCommand(GitHubCommand):
             self.pull_request = self.github.create_pull_request(
                 self.title_or_number, self.description, self.branch)
         except GitHubException:
-            puts_err("Unable to create pull request.")
-            exit(1)
+            exit("Unable to create pull request.")
 
     def exit(self):
         """Handle review command exit.
@@ -598,24 +589,27 @@ class StartCommand(GitCommand):
 
         :param namespace: Command-line argument namespace.
         """
-        branch = self.get_value("continuity", "integration-branch")
+        name = prompt("Enter branch name")
+        ret_val = '-'.join(name.split())
 
-        if branch != self.git.branch.name:
-            message = "error: Attempted start from non-integration branch; switch to '{0}'."  # NOQA
-            puts_err(message.format(branch))
-            exit(1)
+        try:
+            self.git.create_branch(ret_val)
+            puts("Switched to a new branch '{0}'".format(ret_val))
+        except GitException, e:
+            exit(e)
 
-    def finalize(self):
-        """Finalize this start command.
-        """
-        puts("Switched to a new branch '{0}'".format(self.branch))
+        return ret_val
 
     def initialize(self, parser):
         """Initialize this start command.
 
         :param parser: Command-line argument parser.
         """
-        self.branch = None
+        branch = self.get_value("continuity", "integration-branch")
+
+        if branch != self.git.branch.name:
+            message = "error: Attempted start from non-integration branch; switch to '{0}'."  # NOQA
+            exit(message.format(branch))
 
 
 class VersionCommand(object):
@@ -697,7 +691,7 @@ def prompt(message, default=None, characters=None):
     return ret_val
 
 
-commands = {
+common_commands = {
     "--help": HelpCommand(),
     "--version": VersionCommand(),
     "commit": CommitCommand(),
@@ -706,3 +700,4 @@ commands = {
     "review": ReviewCommand(),
     "start": StartCommand(),
 }
+commands = common_commands.copy()

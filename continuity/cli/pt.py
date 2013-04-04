@@ -12,7 +12,7 @@
 from .commons import (cached_property, FinishCommand as BaseFinishCommand,
         GitCommand, prompt, ReviewCommand as BaseReviewCommand,
         StartCommand as BaseStartCommand)
-from clint.textui import colored, puts, puts_err
+from clint.textui import colored, puts
 from continuity.pt import PivotalTracker, Story
 from pydoc import pipepager
 from StringIO import StringIO
@@ -56,8 +56,7 @@ class PivotalTrackerCommand(GitCommand):
             ret_val = None
 
         if not ret_val:
-            puts_err("fatal: Not a story branch.")
-            exit(1)
+            exit("fatal: Not a story branch.")
 
         return ret_val
 
@@ -192,7 +191,6 @@ class StartCommand(BaseStartCommand, PivotalTrackerCommand):
 
         :param namespace: Command-line argument namespace.
         """
-        super(StartCommand, self).execute(namespace)
         self.namespace = namespace
 
         if self.story:
@@ -205,29 +203,24 @@ class StartCommand(BaseStartCommand, PivotalTrackerCommand):
 
             # Verify that owner got the story.
             if self.story.owner == owner:
-                name = prompt("Enter branch name")
-                self.branch = '-'.join(name.split())
-                self.git.create_branch(self.branch)
-                self.git.set_configuration("branch", self.branch,
+                branch = super(StartCommand, self).execute(namespace)
+                self.git.set_configuration("branch", branch,
                         story=self.story.id)
                 self.pt.set_story(self.project, self.story,
                         Story.STATE_STARTED)
             else:
-                puts("Unable to update story owner.")
-                exit(1)
+                exit("Unable to update story owner.")
         else:
             if namespace.id and namespace.exclusive:
-                puts("No estimated story #{0} found assigned to you.".format(
+                exit("No estimated story #{0} found assigned to you.".format(
                     namespace.id))
             elif namespace.id:
-                puts("No estimated story #{0} found in the backlog.".format(
+                exit("No estimated story #{0} found in the backlog.".format(
                     namespace.id))
             elif namespace.exclusive:
-                puts("No estimated stories found in my work.")
+                exit("No estimated stories found in my work.")
             else:
-                puts("No estimated stories found in the backlog.")
-
-            exit(1)
+                exit("No estimated stories found in the backlog.")
 
     def exit(self):
         """Handle start command exit.
@@ -240,11 +233,11 @@ class StartCommand(BaseStartCommand, PivotalTrackerCommand):
 
         :param parser: Command-line argument parser.
         """
-        super(StartCommand, self).initialize(parser)
         parser.add_argument("-i", "--id", help="start the specified story",
                 type=int)
         parser.add_argument("-m", "--mywork", action="store_true",
                 help="only start stories owned by you")
+        super(StartCommand, self).initialize(parser)
 
     @cached_property
     def story(self):

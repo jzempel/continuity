@@ -10,7 +10,7 @@
 """
 
 from .commons import (cached_property, FinishCommand as BaseFinishCommand,
-        GitHubCommand, prompt, ReviewCommand as BaseReviewCommand,
+        GitHubCommand, ReviewCommand as BaseReviewCommand,
         StartCommand as BaseStartCommand)
 from clint.textui import colored, puts
 from continuity.github import Issue
@@ -140,7 +140,6 @@ class StartCommand(BaseStartCommand, GitHubCommand):
 
         :param namespace: Command-line argument namespace.
         """
-        super(StartCommand, self).execute(namespace)
         self.namespace = namespace
 
         if self.issue:
@@ -153,27 +152,22 @@ class StartCommand(BaseStartCommand, GitHubCommand):
 
             # Verify that user got the issue.
             if self.issue.assignee == user:
-                name = prompt("Enter branch name")
-                self.branch = '-'.join(name.split())
-                self.git.create_branch(self.branch)
-                self.git.set_configuration("branch", self.branch,
+                branch = super(StartCommand, self).execute(namespace)
+                self.git.set_configuration("branch", branch,
                         issue=self.issue.number)
-                self.github.add_labels(self.issue.number, "started")
+                self.github.add_labels(self.issue, "started")
             else:
-                puts("Unable to update issue assignee.")
-                exit(1)
+                exit("Unable to update issue assignee.")
         else:
             if namespace.number and namespace.exclusive:
-                puts("No available issue #{0} found assigned to you.".format(
+                exit("No available issue #{0} found assigned to you.".format(
                     namespace.number))
             elif namespace.number:
-                puts("No available issue #{0} found.".format(namespace.number))
+                exit("No available issue #{0} found.".format(namespace.number))
             elif namespace.exclusive:
-                puts("No available issues found assigned to you.")
+                exit("No available issues found assigned to you.")
             else:
-                puts("No available issues found.")
-
-            exit(1)
+                exit("No available issues found.")
 
     def exit(self):
         """Handle start command exit.
@@ -186,11 +180,11 @@ class StartCommand(BaseStartCommand, GitHubCommand):
 
         :param parser: Command-line argument parser.
         """
-        super(StartCommand, self).initialize(parser)
         parser.add_argument("-n", "--number", help="start the specified issue",
                 type=int)
         parser.add_argument("-u", "--assignedtoyou", action="store_true",
                 help="only start issues assigned to you")
+        super(StartCommand, self).initialize(parser)
 
     @cached_property
     def issue(self):

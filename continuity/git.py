@@ -149,7 +149,12 @@ class Git(object):
         remote = self.repo.remotes.origin
         command = [self.git, "push", remote.name, self.branch.name]
 
-        return self.repo.git.execute(command)
+        try:
+            ret_val = self.repo.git.execute(command)
+        except GitCommandError:
+            raise GitException(), None, exc_info()[2]
+
+        return ret_val
 
     @property
     def remote(self):
