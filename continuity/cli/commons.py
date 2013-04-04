@@ -235,9 +235,9 @@ class CommitCommand(object):
         :param arguments: Command-line arguments.
         """
         commit = arguments.get(0)
+        git = Git()
 
-        if commit:
-            git = Git()
+        if commit and git.branch:
             configuration = git.get_configuration("branch", git.branch.name)
 
             if configuration:

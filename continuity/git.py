@@ -41,7 +41,14 @@ class Git(object):
     def branch(self):
         """Branch accessor.
         """
-        return self.repo.head.ref
+        head = self.repo.head
+
+        if head.is_detached:
+            ret_val = None
+        else:
+            ret_val = head.ref
+
+        return ret_val
 
     def create_branch(self, name, push=True):
         """Create the given branch name.
