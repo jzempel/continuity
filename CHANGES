@@ -6,6 +6,8 @@ Version 0.5
 
 * Refactored CLI.
 * Handle 'finish' command merge conflicts.
+* All around improved error handling.
+* Updated 'finish' to accept 'git-merge' arguments.
 
 Version 0.4.2
 ^^^^^^^^^^^^^

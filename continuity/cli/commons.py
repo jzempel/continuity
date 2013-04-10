@@ -80,8 +80,8 @@ class GitCommand(object):
 
         try:
             self.initialize(parser)
-            namespace = Namespace(self.git)
-            parser.parse_args(arguments.all, namespace=namespace)
+            namespace = parser.parse_args(arguments.all,
+                    namespace=Namespace(self.git))
             self.execute(namespace)
         except (KeyboardInterrupt, EOFError):
             puts()
@@ -274,14 +274,22 @@ class FinishCommand(GitCommand):
         :param namespace: Command-line argument namespace.
         """
         target = self.get_section("continuity").get("integration-branch")
+        arguments = namespace[1]
 
         try:
-            self.git.merge_branch(target, self.message)
+            self.git.merge_branch(target, self.message, arguments)
             puts("Merged branch '{0}' into {1}.".format(self.branch,
                 self.git.branch.name))
-        except GitException:
-            for path in self.git.repo.index.unmerged_blobs():
-                puts_err("Merge conflict: {0}".format(path))
+        except GitException, error:
+            paths = self.git.repo.index.unmerged_blobs()
+
+            if paths:
+                for path in paths:
+                    puts_err("Merge conflict: {0}".format(path))
+            else:
+                self.git.get_branch(self.branch)
+                puts_err(error.message)
+                exit(error.status)
 
     def finalize(self):
         """Finalize this finish command.
@@ -297,6 +305,7 @@ class FinishCommand(GitCommand):
 
         :param parser: Command-line argument parser.
         """
+        parser.parse_args = parser.parse_known_args
         self.branch = self.git.branch.name
         self.message = None
 
