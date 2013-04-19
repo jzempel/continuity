@@ -1,6 +1,12 @@
 Changelog
 ---------
 
+Version 0.5.1
+~~~~~~~~~~~~~
+
+* Fix manifest.
+* Explicit 'exit' import.
+
 Version 0.5
 ^^^^^^^^^^^
 

@@ -16,6 +16,7 @@ from clint.textui import colored, puts
 from continuity.github import Issue
 from pydoc import pipepager
 from StringIO import StringIO
+from sys import exit
 
 
 class FinishCommand(BaseFinishCommand, GitHubCommand):

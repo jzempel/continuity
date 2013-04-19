@@ -20,6 +20,7 @@ from getch.getch import getch
 from getpass import getpass
 from os import chmod, rename
 from os.path import exists
+from sys import exit
 
 
 class cached_property(object):

@@ -16,6 +16,7 @@ from clint.textui import colored, puts
 from continuity.pt import PivotalTracker, Story
 from pydoc import pipepager
 from StringIO import StringIO
+from sys import exit
 
 
 class PivotalTrackerCommand(GitCommand):

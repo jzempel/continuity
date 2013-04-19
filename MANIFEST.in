@@ -1,1 +1,2 @@
 include CHANGES LICENSE Makefile
+include continuity/cli/*.py

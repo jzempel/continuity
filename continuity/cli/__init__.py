@@ -15,6 +15,7 @@ from .pt import commands as pivotal_commands
 from clint import args
 from clint.textui import puts_err
 from continuity.git import Git, GitException
+from sys import exit
 
 
 def main():
