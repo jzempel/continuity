@@ -9,9 +9,9 @@
     :license: BSD, see LICENSE for more details.
 """
 
-from .commons import (cached_property, FinishCommand as BaseFinishCommand,
-        GitHubCommand, ReviewCommand as BaseReviewCommand,
-        StartCommand as BaseStartCommand)
+from .commons import (FinishCommand as BaseFinishCommand, GitHubCommand,
+        ReviewCommand as BaseReviewCommand, StartCommand as BaseStartCommand)
+from .utils import cached_property
 from clint.textui import colored, puts
 from continuity.github import Issue
 from pydoc import pipepager
@@ -23,6 +23,20 @@ class FinishCommand(BaseFinishCommand, GitHubCommand):
     """Finish an issue branch.
     """
 
+    def _merge_branch(self, branch):
+        """Merge a branch.
+
+        :param branch: The name of the branch to merge.
+        """
+        try:
+            self.git.get_branch(branch)
+            self.issue  # Cache the branch issue.
+        finally:
+            self.git.get_branch(self.branch)
+
+        message = "[close #{0:d}]".format(self.issue.number)
+        self.git.merge_branch(branch, message)
+
     def finalize(self):
         """Finalize this finish command.
         """
@@ -31,23 +45,15 @@ class FinishCommand(BaseFinishCommand, GitHubCommand):
         puts("Finished issue #{0:d}.".format(self.issue.number))
         super(FinishCommand, self).finalize()
 
-    def initialize(self, parser):
-        """Initialize this finish command.
-
-        :param parser: Command-line argument parser.
-        """
-        super(FinishCommand, self).initialize(parser)
-        self.message = "[close #{0:d}]".format(self.issue.number)
-
 
 class IssueCommand(GitHubCommand):
     """Display issue branch information.
     """
 
-    def execute(self, namespace):
-        """Execute this issue command.
+    name = "issue"
 
-        :param namespace: Command-line argument namespace.
+    def execute(self):
+        """Execute this issue command.
         """
         puts(self.issue.title)
 
@@ -68,14 +74,22 @@ class IssueCommand(GitHubCommand):
 
 class IssuesCommand(GitHubCommand):
     """List open issues.
+
+    :param parser: Command-line argument parser.
+    :param namespace: Command-line argument namespace.
     """
 
-    def execute(self, namespace):
-        """Execute this issues command.
+    name = "issues"
 
-        :param namespace: Command-line argument namespace.
+    def __init__(self, parser, namespace):
+        parser.add_argument("-u", "--assignedtoyou", action="store_true",
+                help="list issues assigned to you")
+        super(IssuesCommand, self).__init__(parser, namespace)
+
+    def execute(self):
+        """Execute this issues command.
         """
-        if namespace.assignedtoyou:
+        if self.namespace.assignedtoyou:
             user = self.github.get_user()
             issues = self.get_issues(assignee=user.login)
         else:
@@ -110,39 +124,37 @@ class IssuesCommand(GitHubCommand):
 
         pipepager(output.getvalue(), cmd="less -FRSX")
 
-    def initialize(self, parser):
-        """Initialize this issues command.
-
-        :param parser: Command-line argument parser.
-        """
-        parser.add_argument("-u", "--assignedtoyou", action="store_true",
-                help="list issues assigned to you")
-
 
 class ReviewCommand(BaseReviewCommand):
     """Open a GitHub pull request for issue branch review.
     """
 
-    def initialize(self, parser):
-        """Initialize this review command.
+    def _create_pull_request(self, branch):
+        """Create a pull request.
 
-        :param parser: Command-line argument parser.
+        :param branch: The base branch the pull request is for.
         """
-        super(ReviewCommand, self).initialize(parser)
-        self.title_or_number = self.issue.number
+        return self.github.create_pull_request(self.issue.number,
+                branch=branch)
 
 
 class StartCommand(BaseStartCommand, GitHubCommand):
     """Start a branch linked to an issue.
+
+    :param parser: Command-line argument parser.
+    :param namespace: Command-line argument namespace.
     """
 
-    def execute(self, namespace):
+    def __init__(self, parser, namespace):
+        parser.add_argument("-n", "--number", help="start the specified issue",
+                type=int)
+        parser.add_argument("-u", "--assignedtoyou", action="store_true",
+                help="only start issues assigned to you")
+        super(StartCommand, self).__init__(parser, namespace)
+
+    def execute(self):
         """Execute this start command.
-
-        :param namespace: Command-line argument namespace.
         """
-        self.namespace = namespace
-
         if self.issue:
             puts("Issue: {0}".format(self.issue.title))
             user = self.github.get_user()
@@ -153,19 +165,20 @@ class StartCommand(BaseStartCommand, GitHubCommand):
 
             # Verify that user got the issue.
             if self.issue.assignee == user:
-                branch = super(StartCommand, self).execute(namespace)
+                branch = super(StartCommand, self).execute()
                 self.git.set_configuration("branch", branch,
                         issue=self.issue.number)
                 self.github.add_labels(self.issue, "started")
             else:
                 exit("Unable to update issue assignee.")
         else:
-            if namespace.number and namespace.exclusive:
+            if self.namespace.number and self.namespace.exclusive:
                 exit("No available issue #{0} found assigned to you.".format(
-                    namespace.number))
-            elif namespace.number:
-                exit("No available issue #{0} found.".format(namespace.number))
-            elif namespace.exclusive:
+                    self.namespace.number))
+            elif self.namespace.number:
+                exit("No available issue #{0} found.".format(
+                    self.namespace.number))
+            elif self.namespace.exclusive:
                 exit("No available issues found assigned to you.")
             else:
                 exit("No available issues found.")
@@ -175,17 +188,6 @@ class StartCommand(BaseStartCommand, GitHubCommand):
         """
         puts("Aborted issue branch.")
         super(StartCommand, self).exit()
-
-    def initialize(self, parser):
-        """Initialize this start command.
-
-        :param parser: Command-line argument parser.
-        """
-        parser.add_argument("-n", "--number", help="start the specified issue",
-                type=int)
-        parser.add_argument("-u", "--assignedtoyou", action="store_true",
-                help="only start issues assigned to you")
-        super(StartCommand, self).initialize(parser)
 
     @cached_property
     def issue(self):
@@ -233,12 +235,3 @@ class StartCommand(BaseStartCommand, GitHubCommand):
                     break
 
         return ret_val
-
-
-commands = {
-    "finish": FinishCommand(),
-    "issue": IssueCommand(),
-    "issues": IssuesCommand(),
-    "review": ReviewCommand(),
-    "start": StartCommand()
-}

@@ -9,9 +9,9 @@
     :license: BSD, see LICENSE for more details.
 """
 
-from .commons import (cached_property, FinishCommand as BaseFinishCommand,
-        GitCommand, prompt, ReviewCommand as BaseReviewCommand,
-        StartCommand as BaseStartCommand)
+from .commons import (FinishCommand as BaseFinishCommand, GitCommand,
+        ReviewCommand as BaseReviewCommand, StartCommand as BaseStartCommand)
+from .utils import cached_property, prompt
 from clint.textui import colored, puts
 from continuity.pt import PivotalTracker, Story
 from pydoc import pipepager
@@ -64,12 +64,20 @@ class PivotalTrackerCommand(GitCommand):
 
 class BacklogCommand(PivotalTrackerCommand):
     """List backlog stories.
+
+    :param parser: Command-line argument parser.
+    :param namespace: Command-line argument namespace.
     """
 
-    def execute(self, namespace):
-        """Execute this backlog command.
+    name = "backlog"
 
-        :param namespace: Command-line argument namespace.
+    def __init__(self, parser, namespace):
+        parser.add_argument("-m", "--mywork", action="store_true",
+                help="list stories owned by you")
+        super(BacklogCommand, self).__init__(parser, namespace)
+
+    def execute(self):
+        """Execute this backlog command.
         """
         owner = self.get_value("pivotal", "owner")
         stories = self.pt.get_backlog(self.project)
@@ -77,7 +85,7 @@ class BacklogCommand(PivotalTrackerCommand):
 
         for story in stories:
             if story.state in [Story.STATE_UNSCHEDULED,
-                    Story.STATE_UNSTARTED] and (namespace.mywork is False
+                    Story.STATE_UNSTARTED] and (self.namespace.mywork is False
                             or story.owner == owner):
                 id = colored.yellow(str(story.id))
 
@@ -103,18 +111,24 @@ class BacklogCommand(PivotalTrackerCommand):
 
         pipepager(output.getvalue(), cmd="less -FRSX")
 
-    def initialize(self, parser):
-        """Initialize the backlog command.
-
-        :param parser: Command-line argument parser.
-        """
-        parser.add_argument("-m", "--mywork", action="store_true",
-                help="list stories owned by you")
-
 
 class FinishCommand(BaseFinishCommand, PivotalTrackerCommand):
     """Finish a story branch.
     """
+
+    def _merge_branch(self, branch):
+        """Merge a branch.
+
+        :param branch: The name of the branch to merge.
+        """
+        try:
+            self.git.get_branch(branch)
+            self.story  # Cache the branch story.
+        finally:
+            self.git.get_branch(self.branch)
+
+        message = "[finish #{0:d}]".format(self.story.id)
+        self.git.merge_branch(branch, message)
 
     def finalize(self):
         """Finalize this finish command.
@@ -123,27 +137,17 @@ class FinishCommand(BaseFinishCommand, PivotalTrackerCommand):
         puts("Finished story #{0:d}.".format(self.story.id))
         super(FinishCommand, self).finalize()
 
-    def initialize(self, parser):
-        """Initialize this finish command.
-
-        :param parser: Command-line argument parser.
-        """
-        super(FinishCommand, self).initialize(parser)
-        self.message = "[finish #{0:d}]".format(self.story.id)
-
 
 class ReviewCommand(BaseReviewCommand, PivotalTrackerCommand):
     """Open a GitHub pull request for story branch review.
     """
 
-    def initialize(self, parser):
-        """Initialize this review command.
+    def _create_pull_request(self, branch):
+        """Create a pull request.
 
-        :param parser: Command-line argument parser.
+        :param branch: The base branch the pull request is for.
         """
-        super(ReviewCommand, self).initialize(parser)
-        self.title_or_number = prompt("Pull request title",
-                self.git.branch.name)
+        title = prompt("Pull request title", self.git.branch.name)
         description = raw_input("Pull request description (optional): ")
 
         if description:
@@ -151,15 +155,17 @@ class ReviewCommand(BaseReviewCommand, PivotalTrackerCommand):
         else:
             self.description = self.story.url
 
+        return self.github.create_pull_request(title, description, branch)
+
 
 class StoryCommand(PivotalTrackerCommand):
     """Display story branch information.
     """
 
-    def execute(self, namespace):
-        """Execute the story command.
+    name = "story"
 
-        :param namespace: Command-line argument namespace.
+    def execute(self):
+        """Execute the story command.
         """
         puts(self.story.name)
         puts()
@@ -185,15 +191,21 @@ class StoryCommand(PivotalTrackerCommand):
 
 class StartCommand(BaseStartCommand, PivotalTrackerCommand):
     """Start a branch linked to a story.
+
+    :param parser: Command-line argument parser.
+    :param namespace: Command-line argument namespace.
     """
 
-    def execute(self, namespace):
+    def __init__(self, parser, namespace):
+        parser.add_argument("-i", "--id", help="start the specified story",
+                type=int)
+        parser.add_argument("-m", "--mywork", action="store_true",
+                help="only start stories owned by you")
+        super(StartCommand, self).__init__(parser, namespace)
+
+    def execute(self):
         """Execute this start command.
-
-        :param namespace: Command-line argument namespace.
         """
-        self.namespace = namespace
-
         if self.story:
             puts("Story: {0}".format(self.story.name))
             owner = self.get_value("pivotal", "owner")
@@ -204,7 +216,7 @@ class StartCommand(BaseStartCommand, PivotalTrackerCommand):
 
             # Verify that owner got the story.
             if self.story.owner == owner:
-                branch = super(StartCommand, self).execute(namespace)
+                branch = super(StartCommand, self).execute()
                 self.git.set_configuration("branch", branch,
                         story=self.story.id)
                 self.pt.set_story(self.project, self.story,
@@ -212,13 +224,13 @@ class StartCommand(BaseStartCommand, PivotalTrackerCommand):
             else:
                 exit("Unable to update story owner.")
         else:
-            if namespace.id and namespace.exclusive:
+            if self.namespace.id and self.namespace.exclusive:
                 exit("No estimated story #{0} found assigned to you.".format(
-                    namespace.id))
-            elif namespace.id:
+                    self.namespace.id))
+            elif self.namespace.id:
                 exit("No estimated story #{0} found in the backlog.".format(
-                    namespace.id))
-            elif namespace.exclusive:
+                    self.namespace.id))
+            elif self.namespace.exclusive:
                 exit("No estimated stories found in my work.")
             else:
                 exit("No estimated stories found in the backlog.")
@@ -228,17 +240,6 @@ class StartCommand(BaseStartCommand, PivotalTrackerCommand):
         """
         puts("Aborted story branch.")
         super(StartCommand, self).exit()
-
-    def initialize(self, parser):
-        """Initialize this start command.
-
-        :param parser: Command-line argument parser.
-        """
-        parser.add_argument("-i", "--id", help="start the specified story",
-                type=int)
-        parser.add_argument("-m", "--mywork", action="store_true",
-                help="only start stories owned by you")
-        super(StartCommand, self).initialize(parser)
 
     @cached_property
     def story(self):
@@ -284,19 +285,27 @@ class StartCommand(BaseStartCommand, PivotalTrackerCommand):
 
 class TasksCommand(PivotalTrackerCommand):
     """List and manage story tasks.
+
+    :param parser: Command-line argument parser.
+    :param namespace: Command-line argument namespace.
     """
 
-    def execute(self, namespace):
-        """Execute the tasks command.
+    name = "tasks"
 
-        :param namespace: Command-line argument namespace.
+    def __init__(self, parser, namespace):
+        parser.add_argument("-x", "--check", metavar="number")
+        parser.add_argument("-o", "--uncheck", metavar="number")
+        super(TasksCommand, self).__init__(parser, namespace)
+
+    def execute(self):
+        """Execute the tasks command.
         """
         tasks = self.pt.get_tasks(self.project, self.story)
 
-        if namespace.check or namespace.uncheck:
-            number = int(namespace.check or namespace.uncheck) - 1
+        if self.namespace.check or self.namespace.uncheck:
+            number = int(self.namespace.check or self.namespace.uncheck) - 1
             task = tasks[number]
-            checked = True if namespace.check else False
+            checked = True if self.namespace.check else False
             task = self.pt.set_task(self.project, self.story, task, checked)
             tasks[number] = task
 
@@ -305,21 +314,3 @@ class TasksCommand(PivotalTrackerCommand):
             message = "[{0}] {1}. {2}".format(checkmark, task.number,
                     task.description)
             puts(message)
-
-    def initialize(self, parser):
-        """Initialize this Pivotal Tracker tasks command.
-
-        :param parser: Command-line argument parser.
-        """
-        parser.add_argument("-x", "--check", metavar="number")
-        parser.add_argument("-o", "--uncheck", metavar="number")
-
-
-commands = {
-    "backlog": BacklogCommand(),
-    "finish": FinishCommand(),
-    "review": ReviewCommand(),
-    "story": StoryCommand(),
-    "start": StartCommand(),
-    "tasks": TasksCommand()
-}

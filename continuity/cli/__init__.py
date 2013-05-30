@@ -9,38 +9,54 @@
     :license: BSD, see LICENSE for more details.
 """
 
-from .commons import commands
-from .github import commands as github_commands
-from .pt import commands as pivotal_commands
-from clint import args
-from clint.textui import puts_err
+from .commons import get_commands
+from continuity import __version__
+from argparse import ArgumentParser, Namespace as BaseNamespace
 from continuity.git import Git, GitException
-from sys import exit
+from sys import argv
+
+
+class Namespace(BaseNamespace):
+    """Continuity argument namespace.
+    """
+
+    @property
+    def exclusive(self):
+        """Determine if continuity is operating in exclusive mode.
+        """
+        ret_val = getattr(self, "assignedtoyou", False) or \
+            getattr(self, "mywork", False)
+
+        if ret_val is False:
+            try:
+                git = Git()
+                configuration = git.get_configuration("continuity")
+                ret_val = configuration.get("exclusive", False)
+            except GitException:
+                pass
+
+        return ret_val
 
 
 def main():
     """Main entry point.
     """
-    command = args.get(0) or "--help"
+    parser = ArgumentParser(prog="continuity")
+    version = "continuity version {0}".format(__version__)
+    parser.add_argument("--version", action="version", version=version)
+    namespace = Namespace()
+    subparsers = parser.add_subparsers()
 
-    try:
-        git = Git()
-        configuration = git.get_configuration("continuity")
+    for command_class in get_commands().itervalues():
+        try:
+            getattr(command_class, "help")
+        except AttributeError:
+            help = command_class.__doc__.split('\n', 1)[0][:-1]
 
-        if configuration:
-            tracker = configuration.get("tracker", "pivotal")
+        subparser = subparsers.add_parser(command_class.name, help=help)
+        command = command_class(subparser, namespace)
+        subparser.set_defaults(command=command)
 
-            if tracker == "github":
-                commands.update(github_commands)
-            elif tracker == "pivotal":
-                commands.update(pivotal_commands)
-    except GitException:
-        pass
-
-    if command in commands:
-        args.remove(command)
-        commands[command](args)
-    else:
-        message = "continuity: '{0}' is not a continuity command. See 'continuity --help'."  # NOQA
-        puts_err(message.format(command))
-        exit(1)
+    arguments = argv[1:] or ["--help"]
+    parser.parse_args(arguments, namespace=namespace)
+    namespace.command()

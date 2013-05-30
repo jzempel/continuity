@@ -1,6 +1,12 @@
 Changelog
 ---------
 
+Version 0.6
+~~~~~~~~~~~
+
+* argparse all the things.
+* Updated 'finish' to execute from integration branch.
+
 Version 0.5.1
 ~~~~~~~~~~~~~
 

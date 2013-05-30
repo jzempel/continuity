@@ -128,28 +128,24 @@ class Git(object):
 
         return ret_val
 
-    def merge_branch(self, name=None, message=None, arguments=None):
-        """Merge the current branch into the given branch name.
+    def merge_branch(self, name, message=None, arguments=None):
+        """Merge the given branch name into the current branch.
 
-        :param name: Default `None`. The name of the branch to merge into.
+        :param name: The name of the branch to merge.
         :param message: Default `None`. An optional message to prepend to the
             merge message.
         :param arguments: Default `None`. List of arguments to pass to
             git-merge.
         """
-        commit = self.branch.name
-        self.get_branch(name or "master")
-        command = [self.git, "merge"]
+        command = [self.git, "merge", name]
 
         if arguments:
             command.extend(arguments)
 
         if message:
-            message = "{0} Merge branch '{1}' into {2}".format(message,
-                    commit, self.branch.name)
+            message = "{0} Merge branch '{1}' into {2}".format(message, name,
+                    self.branch.name)
             command.extend(["--no-ff", "-m", message])
-
-        command.append(commit)
 
         try:
             ret_val = self.repo.git.execute(command)

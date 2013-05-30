@@ -9,91 +9,48 @@
     :license: BSD, see LICENSE for more details.
 """
 
-from argparse import ArgumentParser, Namespace as BaseNamespace
-from clint.textui import colored, columns, indent, puts, puts_err
-from continuity import __version__
+from .utils import cached_property, confirm, prompt
+from argparse import REMAINDER, SUPPRESS
+from clint.textui import colored, indent, puts, puts_err
 from continuity.git import Git, GitException
 from continuity.github import GitHub, GitHubException
 from continuity.pt import PivotalTracker
-from curses.ascii import ctrl, CR, EOT, ETX, isctrl, LF
-from getch.getch import getch
 from getpass import getpass
 from os import chmod, rename
 from os.path import exists
 from sys import exit
 
 
-class cached_property(object):
-    """Cached property decorator.
+class BaseCommand(object):
+    """Base command.
 
-    :param function: The function to decorate.
+    :param parser: Command-line argument parser.
+    :param namespace: Command-line argument namespace.
     """
 
-    def __init__(self, function):
-        self.__doc__ = function.__doc__
-        self.__module__ = function.__module__
-        self.__name__ = function.__name__
-        self.function = function
-        self.attribute = "_{0}".format(self.__name__)
-
-    def __get__(self, instance, owner):
-        """Get the attribute of the given instance.
-
-        :param instance: The instance to get an attribute for.
-        :param owner: The instance owner class.
-        """
-        if not hasattr(instance, self.attribute):
-            setattr(instance, self.attribute, self.function(instance))
-
-        return getattr(instance, self.attribute)
+    def __init__(self, parser, namespace):
+        self.namespace = namespace
 
 
-class Namespace(BaseNamespace):
-    """Continuity argument namespace.
-
-    :param git: Git repository.
-    """
-
-    def __init__(self, git, **kwargs):
-        super(Namespace, self).__init__(**kwargs)
-
-        self.configuration = git.get_configuration("continuity")
-
-    @property
-    def exclusive(self):
-        """Determine if continuity is operating in exclusive mode.
-        """
-        return self.configuration.get("exclusive", False) or \
-            getattr(self, "assignedtoyou", False) or \
-            getattr(self, "mywork", False)
-
-
-class GitCommand(object):
+class GitCommand(BaseCommand):
     """Base Git command.
     """
 
-    def __call__(self, arguments):
+    def __call__(self):
         """Call this command.
-
-        :param arguments: Command-line arguments.
         """
-        parser = ArgumentParser()
+        self.branch = self.git.branch
 
         try:
-            self.initialize(parser)
-            namespace = parser.parse_args(arguments.all,
-                    namespace=Namespace(self.git))
-            self.execute(namespace)
+            self.execute()
         except (KeyboardInterrupt, EOFError):
             puts()
             self.exit()
 
         self.finalize()
 
-    def execute(self, namespace):
+    def execute(self):
         """Execute this command.
-
-        :param namespace: Command-line argument namespace.
         """
         raise NotImplementedError
 
@@ -149,29 +106,6 @@ class GitCommand(object):
 
         return ret_val
 
-    def initialize(self, parser):
-        """Initialize this command.
-
-        :param parser: Command-line argument parser.
-        """
-        pass
-
-    @cached_property
-    def tracker(self):
-        """Configured tracker accessor.
-        """
-        try:
-            configuration = self.git.get_configuration("continuity")
-
-            if configuration:
-                ret_val = configuration.get("tracker", "pivotal")
-            else:
-                ret_val = None
-        except GitException:
-            ret_val = None
-
-        return ret_val
-
 
 class GitHubCommand(GitCommand):
     """Base GitHub command.
@@ -208,8 +142,7 @@ class GitHubCommand(GitCommand):
     def issue(self):
         """Current branch issue accessor.
         """
-        configuration = self.git.get_configuration("branch",
-                self.git.branch.name)
+        configuration = self.git.get_configuration("branch", self.branch.name)
 
         if configuration:
             try:
@@ -226,61 +159,93 @@ class GitHubCommand(GitCommand):
         return ret_val
 
 
-class CommitCommand(object):
+class CommitCommand(BaseCommand):
     """Git prepare commit message hook.
+
+    :param parser: Command-line argument parser.
+    :param namespace: Command-line argument namespace.
     """
 
-    def __call__(self, arguments):
+    name = "commit"
+
+    def __init__(self, parser, namespace):
+        parser.add_argument("file", metavar="<file>")
+        parser.add_argument("parameters", help=SUPPRESS, nargs=REMAINDER)
+        super(CommitCommand, self).__init__(parser, namespace)
+
+    def __call__(self):
         """Call this commit command.
-
-        :param arguments: Command-line arguments.
         """
-        commit = arguments.get(0)
-        git = Git()
+        try:
+            git = Git()
 
-        if commit and git.branch:
-            configuration = git.get_configuration("branch", git.branch.name)
+            if git.branch:
+                configuration = git.get_configuration("branch",
+                        git.branch.name)
 
-            if configuration:
-                continuity = git.get_configuration("continuity")
+                if configuration:
+                    continuity = git.get_configuration("continuity")
 
-                try:
-                    if continuity.get("tracker") == "github":
-                        number = configuration["issue"]
-                    else:
-                        number = configuration["story"]
+                    try:
+                        if continuity.get("tracker") == "github":
+                            number = configuration["issue"]
+                        else:
+                            number = configuration["story"]
 
-                    with open(commit) as file:
-                        message = file.read()
+                        mention = "#{0}".format(number)
 
-                    message = "[#{0}] {1}".format(number, message)
+                        with open(self.namespace.file, 'r') as file:
+                            message = file.read()
 
-                    with open(commit, 'w') as file:
-                        file.write(message)
-                except KeyError:
+                        if mention not in message:
+                            message = "[{0}] {1}".format(mention, message)
+
+                            with open(self.namespace.file, 'w') as file:
+                                file.write(message)
+                    except KeyError:
+                        exit()
+                else:
                     exit()
             else:
                 exit()
-        else:
+        except GitException:
             exit()
 
 
 class FinishCommand(GitCommand):
     """Finish work on a branch.
+
+    :param parser: Command-line argument parser.
+    :param namespace: Command-line argument namespace.
     """
 
-    def execute(self, namespace):
-        """Execute this finish command.
+    name = "finish"
 
-        :param namespace: Command-line argument namespace.
+    def __init__(self, parser, namespace):
+        parser.add_argument("branch", metavar="<branchname>")
+        parser.add_argument("parameters", help=SUPPRESS, nargs=REMAINDER)
+        super(FinishCommand, self).__init__(parser, namespace)
+
+    def _merge_branch(self, branch):
+        """Merge a branch.
+
+        :param branch: The name of the branch to merge.
         """
-        target = self.get_section("continuity").get("integration-branch")
-        arguments = namespace[1]
+        raise NotImplementedError
 
+    def execute(self):
+        """Execute this finish command.
+        """
         try:
-            self.git.merge_branch(target, self.message, arguments)
-            puts("Merged branch '{0}' into {1}.".format(self.branch,
-                self.git.branch.name))
+            self._merge_branch(self.namespace.branch)
+            puts("Merged branch '{0}' into {1}.".format(self.namespace.branch,
+                self.branch.name))
+
+            try:
+                self.git.delete_branch(self.namespace.branch)
+                puts("Deleted branch {0}.".format(self.namespace.branch))
+            except GitException:
+                exit("conflict: Fix conflicts and then commit the result.")
         except GitException, error:
             paths = self.git.repo.index.unmerged_blobs()
 
@@ -288,72 +253,38 @@ class FinishCommand(GitCommand):
                 for path in paths:
                     puts_err("Merge conflict: {0}".format(path))
             else:
-                self.git.get_branch(self.branch)
                 puts_err(error.message)
                 exit(error.status)
-
-    def finalize(self):
-        """Finalize this finish command.
-        """
-        try:
-            self.git.delete_branch(self.branch)
-            puts("Deleted branch {0}.".format(self.branch))
-        except GitException:
-            exit("conflict: Fix conflicts and then commit the result.")
-
-    def initialize(self, parser):
-        """Initialize this finish command.
-
-        :param parser: Command-line argument parser.
-        """
-        parser.parse_args = parser.parse_known_args
-        self.branch = self.git.branch.name
-        self.message = None
-
-
-class HelpCommand(object):
-    """Display help for continuity.
-    """
-
-    def __call__(self, arguments):
-        """Call this help command.
-
-        :param arguments: Command-line arguments.
-        """
-        puts("usage: continuity [--version]")
-
-        with indent(18):
-            puts("[--help]")
-            puts("<command> [<args>]")
-
-        command_documentation = {}
-        width = 0
-
-        for command, instance in commands.iteritems():
-            if isinstance(instance, GitCommand):
-                documentation = instance.__doc__.split('\n', 1)[0][:-1]
-                command_documentation[command] = documentation
-                width = len(command) if len(command) > width else width
-
-        puts()
-        puts("The continuity commands are:")
-
-        with indent():
-            for command, documentation in sorted(command_documentation.
-                    iteritems()):
-                puts(columns([command, width + 2], [documentation, None]).
-                    rstrip())
 
 
 class InitCommand(GitCommand):
     """Initialize a git repository for use with continuity.
     """
 
-    def execute(self, namespace):
-        """Execute this init command.
+    name = "init"
 
-        :param namespace: Command-line argument namespace.
+    def execute(self):
+        """Execute this init command.
         """
+        puts("Enter values or accept [defaults] with Enter.")
+        puts()
+        self.continuity = self.initialize_continuity()
+
+        if self.continuity["tracker"] == "pivotal":
+            puts()
+            self.pivotal = self.initialize_pivotal()
+        else:
+            self.pivotal = {}
+
+        puts()
+        self.github = self.initialize_github()
+        self.aliases = {}
+
+        for command, command_class in get_commands().iteritems():
+            if issubclass(command_class, GitCommand):
+                alias = "continuity" if command == "init" else command
+                self.aliases[alias] = "!continuity {0} \"$@\"".format(command)
+
         self.git.set_configuration("continuity", **self.continuity)
         self.git.set_configuration("github", **self.github)
         self.git.set_configuration("pivotal", **self.pivotal)
@@ -414,41 +345,11 @@ class InitCommand(GitCommand):
             for command in sorted(self.aliases.iterkeys()):
                 puts(command)
 
-    def initialize(self, parser):
-        """Initialize this init command.
-
-        :param parser: Command-line argument parser.
-        """
-        self.git  # Git repository validation.
-        puts("Enter values or accept [defaults] with Enter.")
-        puts()
-        self.continuity = self.initialize_continuity()
-
-        if self.continuity["tracker"] == "pivotal":
-            puts()
-            self.pivotal = self.initialize_pivotal()
-            name = "continuity.cli.pt"
-        else:
-            self.pivotal = {}
-            name = "continuity.cli.github"
-
-        puts()
-        self.github = self.initialize_github()
-        commands = common_commands
-        module = __import__(name, fromlist=["commands"])
-        commands.update(module.commands)
-        self.aliases = {}
-
-        for command, instance in commands.iteritems():
-            if isinstance(instance, GitCommand):
-                alias = "continuity" if command == "init" else command
-                self.aliases[alias] = "!continuity {0} \"$@\"".format(command)
-
     def initialize_continuity(self):
         """Initialize continuity data.
         """
         configuration = self.git.get_configuration("continuity")
-        branch = configuration.get("integration-branch", self.git.branch.name)
+        branch = configuration.get("integration-branch", self.branch.name)
         branch = prompt("Integration branch", branch)
         tracker = configuration.get("tracker")
         tracker = prompt("Configure for (P)ivotal Tracker or (G)itHub Issues?",
@@ -555,17 +456,23 @@ class ReviewCommand(GitHubCommand):
     """Open a GitHub pull request for branch review.
     """
 
-    def execute(self, namespace):
-        """Execute this review command.
+    name = "review"
 
-        :param namespace: Command-line argument namespace.
+    def _create_pull_request(self, branch):
+        """Create a pull request.
+
+        :param branch: The base branch the pull request is for.
         """
+        raise NotImplementedError
+
+    def execute(self):
         puts("Creating pull request...")
 
         try:
             self.git.push_branch()
-            self.pull_request = self.github.create_pull_request(
-                self.title_or_number, self.description, self.branch)
+            branch = self.get_value("continuity", "integration-branch")
+            pull_request = self._create_pull_request(branch)
+            puts("Opened pull request: {0}".format(pull_request.url))
         except GitHubException:
             exit("Unable to create pull request.")
 
@@ -575,31 +482,19 @@ class ReviewCommand(GitHubCommand):
         puts("Aborted branch review.")
         super(ReviewCommand, self).exit()
 
-    def finalize(self):
-        """Finalize this review command.
-        """
-        puts("Opened pull request: {0}".format(self.pull_request.url))
-
-    def initialize(self, parser):
-        """Initialize this review command.
-
-        :param parser: Command-line argument parser.
-        """
-        self.branch = self.get_value("continuity", "integration-branch")
-        self.description = None
-        self.title_or_number = None
-
 
 class StartCommand(GitCommand):
     """Start work on a branch.
     """
 
-    def execute(self, namespace):
-        """Execute this start command.
+    name = "start"
 
-        :param namespace: Command-line argument namespace.
+    def execute(self):
+        """Execute this start command.
         """
-        if self.branch == self.git.branch.name:
+        branch = self.get_value("continuity", "integration-branch")
+
+        if branch == self.branch.name:
             name = prompt("Enter branch name")
             ret_val = '-'.join(name.split())
 
@@ -610,104 +505,54 @@ class StartCommand(GitCommand):
                 exit(e)
         else:
             message = "error: Attempted start from non-integration branch; switch to '{0}'."  # NOQA
-            exit(message.format(self.branch))
+            exit(message.format(branch))
 
         return ret_val
 
-    def initialize(self, parser):
-        """Initialize this start command.
 
-        :param parser: Command-line argument parser.
-        """
-        self.branch = self.get_value("continuity", "integration-branch")
-
-
-class VersionCommand(object):
-    """Display the version of continuity.
+def get_commands():
+    """Get the available continuity commands.
     """
+    ret_val = {
+        CommitCommand.name: CommitCommand,
+        InitCommand.name: InitCommand,
+    }
 
-    def __call__(self, arguments):
-        """Call this version command.
+    try:
+        git = Git()
+        continuity = git.get_configuration("continuity")
+        tracker = continuity.get("tracker")
 
-        :param arguments: Command-line arguments.
-        """
-        message = "continuity version {0}".format(__version__)
-        puts(message)
+        if tracker == "github":
+            from .github import (FinishCommand, IssueCommand, IssuesCommand,
+                    ReviewCommand, StartCommand)
 
-
-def confirm(message, default=False):
-    """Prompt for confirmation.
-
-    :param message: The confirmation message.
-    :param default: Default `False`.
-    """
-    if default is True:
-        options = "Y/n"
-    elif default is False:
-        options = "y/N"
-    else:
-        options = "y/n"
-
-    message = "{0} ({1})".format(message, options)
-    ret_val = prompt(message, default=default, characters="YN")
-
-    if ret_val == 'Y':
-        ret_val = True
-    elif ret_val == 'N':
-        ret_val = False
-
-    return ret_val
-
-
-def prompt(message, default=None, characters=None):
-    """Prompt for input.
-
-    :param message: The prompt message.
-    :param default: Default `None`. The default input value.
-    :param characters: Default `None`. Case-insensitive constraint for single-
-        character input.
-    """
-    if isinstance(default, basestring):
-        message = "{0} [{1}]".format(message, default)
-
-    if characters:
-        puts("{0} ".format(message), newline=False)
-    else:
-        message = "{0}: ".format(message)
-
-    while True:
-        if characters:
-            ret_val = getch()
-
-            if default is not None and ret_val in (chr(CR), chr(LF)):
-                puts()
-                ret_val = default
-                break
-            if ret_val in characters.lower() or ret_val in characters.upper():
-                puts()
-
-                if ret_val not in characters:
-                    ret_val = ret_val.swapcase()
-
-                break
-            elif isctrl(ret_val) and ctrl(ret_val) in (chr(ETX), chr(EOT)):
-                raise KeyboardInterrupt
+            ret_val.update({
+                FinishCommand.name: FinishCommand,
+                IssueCommand.name: IssueCommand,
+                IssuesCommand.name: IssuesCommand,
+                ReviewCommand.name: ReviewCommand,
+                StartCommand.name: StartCommand
+            })
         else:
-            ret_val = raw_input(message).strip() or default
+            from .pt import (BacklogCommand, FinishCommand, ReviewCommand,
+                    StoryCommand, StartCommand, TasksCommand)
 
-            if ret_val:
-                break
+            ret_val.update({
+                BacklogCommand.name: BacklogCommand,
+                FinishCommand.name: FinishCommand,
+                ReviewCommand.name: ReviewCommand,
+                StoryCommand.name: StoryCommand,
+                StartCommand.name: StartCommand,
+                TasksCommand.name: TasksCommand
+            })
+    except GitException:
+        from .commons import FinishCommand, ReviewCommand, StartCommand
+
+        ret_val.update({
+            FinishCommand.name: FinishCommand,
+            ReviewCommand.name: ReviewCommand,
+            StartCommand.name: StartCommand
+        })
 
     return ret_val
-
-
-common_commands = {
-    "--help": HelpCommand(),
-    "--version": VersionCommand(),
-    "commit": CommitCommand(),
-    "finish": FinishCommand(),
-    "init": InitCommand(),
-    "review": ReviewCommand(),
-    "start": StartCommand(),
-}
-commands = common_commands.copy()
