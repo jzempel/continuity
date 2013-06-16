@@ -10,10 +10,67 @@
 """
 
 from .commons import get_commands
-from continuity import __version__
-from argparse import ArgumentParser, Namespace as BaseNamespace
+from argparse import (ArgumentParser as BaseArgumentParser,
+        HelpFormatter as BaseHelpFormatter,
+        Namespace as BaseNamespace, PARSER, SUPPRESS)
 from continuity.git import Git, GitException
 from sys import argv
+import continuity
+
+
+class ArgumentParser(BaseArgumentParser):
+    """Continuity argument parser.
+
+    :param *args: Argument list.
+    :param **kwargs: Keyword arguments.
+    """
+
+    def __init__(self, *args, **kwargs):
+        kwargs.setdefault("add_help", False)
+        super(ArgumentParser, self).__init__(*args, **kwargs)
+        self.add_argument("--help", action="help", help=SUPPRESS)
+
+
+class HelpFormatter(BaseHelpFormatter):
+    """Continuity help formatter.
+
+    :param *args: Argument list.
+    :param **kwargs: Keyword arguments.
+    """
+
+    def __init__(self, *args, **kwargs):
+        kwargs.setdefault("max_help_position", 18)
+        super(HelpFormatter, self).__init__(*args, **kwargs)
+
+    def _format_args(self, action, default_metavar):
+        """Format action arguments.
+
+        :param action: The action to format arguments for.
+        :param default_metavar: Default action display name.
+        """
+        if action and action.nargs == PARSER:
+            # Replace subparser list.
+            ret_val = "[--version] [--help]\n{0}<command> [<args>]".format(
+                ' ' * 18)
+        else:
+            ret_val = super(HelpFormatter, self)._format_args(action,
+                    default_metavar)
+
+        return ret_val
+
+    def _join_parts(self, part_strings):
+        """Join the given part strings.
+
+        :param part_strings: The part strings to join.
+        """
+        if part_strings:
+            part_string = part_strings[0]
+
+            if part_string and part_string.strip().startswith('{'):
+                # Remove redundant subparser list.
+                part_strings = part_strings[1:]
+
+        return super(HelpFormatter, self)._join_parts(part_strings)
 
 
 class Namespace(BaseNamespace):
@@ -41,22 +98,37 @@ class Namespace(BaseNamespace):
 def main():
     """Main entry point.
     """
-    parser = ArgumentParser(prog="continuity")
-    version = "continuity version {0}".format(__version__)
-    parser.add_argument("--version", action="version", version=version)
-    namespace = Namespace()
-    subparsers = parser.add_subparsers()
+    parser = ArgumentParser(prog=continuity.__name__,
+            formatter_class=HelpFormatter)
 
-    for command_class in get_commands().itervalues():
+    for action_group in parser._action_groups:
+        if "positional" in action_group.title:
+            action_group.title = "The {0} commands are".format(parser.prog)
+            break
+
+    subparsers = parser.add_subparsers()
+    namespace = Namespace()
+    commands = get_commands()
+
+    for command_name in sorted(commands.iterkeys()):
+        command_class = commands[command_name]
+        kwargs = {}
+
         try:
-            getattr(command_class, "help")
+            help = getattr(command_class, "help")
         except AttributeError:
             help = command_class.__doc__.split('\n', 1)[0][:-1]
 
-        subparser = subparsers.add_parser(command_class.name, help=help)
+        if help is not SUPPRESS:
+            kwargs["help"] = help
+
+        subparser = subparsers.add_parser(command_name, **kwargs)
         command = command_class(subparser, namespace)
         subparser.set_defaults(command=command)
 
+    version = "{0} version {1}".format(parser.prog, continuity.__version__)
+    parser.add_argument("--version", action="version", help=SUPPRESS,
+            version=version)
     arguments = argv[1:] or ["--help"]
     parser.parse_args(arguments, namespace=namespace)
     namespace.command()

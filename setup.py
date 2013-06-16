@@ -14,7 +14,7 @@ from setuptools import setup
 import continuity
 
 setup(
-    name="continuity",
+    name=continuity.__name__,
     version=continuity.__version__,
     url="http://github.com/jzempel/continuity",
     license=continuity.__license__,

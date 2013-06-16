@@ -166,6 +166,7 @@ class CommitCommand(BaseCommand):
     :param namespace: Command-line argument namespace.
     """
 
+    help = SUPPRESS
     name = "commit"
 
     def __init__(self, parser, namespace):
