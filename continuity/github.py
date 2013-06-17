@@ -342,6 +342,24 @@ class GitHubException(Exception):
     """
 
 
+class GitHubRequestException(GitHubException):
+    """GitHub request exception.
+
+    :param *args: Argument list.
+    :param **kwargs: Keyword arguments.
+    """
+
+    def __init__(self, *args, **kwargs):
+        super(GitHubRequestException, self).__init__(*args, **kwargs)
+
+        if self.args:
+            error = self.args[0]
+
+            if isinstance(error, RequestException):
+                self.response = error.response
+                self.json = loads(self.response.text)
+
+
 class GitHub(object):
     """GitHub service.
 
@@ -400,7 +418,7 @@ class GitHub(object):
         try:
             response.raise_for_status()
         except RequestException, e:
-            raise GitHubException(e)
+            raise GitHubRequestException(e)
 
         return loads(response.content)
 

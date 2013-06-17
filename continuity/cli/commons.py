@@ -471,11 +471,25 @@ class ReviewCommand(GitHubCommand):
 
         try:
             self.git.push_branch()
-            branch = self.get_value("continuity", "integration-branch")
+            configuration = self.git.get_configuration("branch",
+                    self.branch.name)
+            branch = configuration.get("integration-branch",
+                    self.get_value("continuity", "integration-branch"))
             pull_request = self._create_pull_request(branch)
             puts("Opened pull request: {0}".format(pull_request.url))
-        except GitHubException:
-            exit("Unable to create pull request.")
+        except GitHubException, e:
+            message = "Unable to create pull request"
+
+            for error in getattr(e, "json").get("errors", []):
+                if error["code"] == "custom":
+                    error_message = error["message"]
+                    message = "{0} - {1}{2}.".format(message,
+                            error_message[:1].lower(), error_message[1:])
+                    break
+            else:
+                message = "{0}.".format(message)
+
+            exit(message)
 
     def exit(self):
         """Handle review command exit.
@@ -486,27 +500,40 @@ class ReviewCommand(GitHubCommand):
 
 class StartCommand(GitCommand):
     """Start work on a branch.
+
+    :param parser: Command-line argument parser.
+    :param namespace: Command-line argument namespace.
     """
 
     name = "start"
+
+    def __init__(self, parser, namespace):
+        parser.add_argument("-f", "--force", action="store_true",
+                help="allow start from non-integration branch")
+        super(StartCommand, self).__init__(parser, namespace)
 
     def execute(self):
         """Execute this start command.
         """
         branch = self.get_value("continuity", "integration-branch")
 
-        if branch == self.branch.name:
+        if self.namespace.force or branch == self.branch.name:
             name = prompt("Enter branch name")
             ret_val = '-'.join(name.split())
 
             try:
                 self.git.create_branch(ret_val)
+
+                if self.namespace.force:
+                    kwargs = {"integration-branch": self.branch.name}
+                    self.git.set_configuration("branch", ret_val, **kwargs)
+
                 puts("Switched to a new branch '{0}'".format(ret_val))
             except GitException, e:
                 exit(e)
         else:
-            message = "error: Attempted start from non-integration branch; switch to '{0}'."  # NOQA
-            exit(message.format(branch))
+            message = "error: Attempted start from non-integration branch; switch to '{0}'.\nUse -f if you really want to start from '{1}'."  # NOQA
+            exit(message.format(branch, self.branch.name))
 
         return ret_val
 

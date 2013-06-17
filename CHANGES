@@ -6,6 +6,7 @@ Version 0.6
 
 * argparse all the things.
 * Updated 'finish' to execute from integration branch.
+* Added 'start --force' command argument.
 
 Version 0.5.1
 ~~~~~~~~~~~~~
