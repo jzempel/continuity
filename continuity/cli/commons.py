@@ -280,8 +280,9 @@ class InitCommand(GitCommand):
         puts()
         self.github = self.initialize_github()
         self.aliases = {}
+        commands = get_commands(self.continuity["tracker"])
 
-        for command, command_class in get_commands().iteritems():
+        for command, command_class in commands.iteritems():
             if issubclass(command_class, GitCommand):
                 alias = "continuity" if command == "init" else command
                 self.aliases[alias] = "!continuity {0} \"$@\"".format(command)
@@ -538,8 +539,11 @@ class StartCommand(GitCommand):
         return ret_val
 
 
-def get_commands():
+def get_commands(tracker=None):
     """Get the available continuity commands.
+
+    :param tracker: Default `None`. The tracker to get commands for. Lookup
+        based on git configuration if not specified.
     """
     ret_val = {
         CommitCommand.name: CommitCommand,
@@ -548,8 +552,10 @@ def get_commands():
 
     try:
         git = Git()
-        continuity = git.get_configuration("continuity")
-        tracker = continuity.get("tracker")
+
+        if not tracker:
+            continuity = git.get_configuration("continuity")
+            tracker = continuity.get("tracker")
 
         if tracker == "github":
             from .github import (FinishCommand, IssueCommand, IssuesCommand,
