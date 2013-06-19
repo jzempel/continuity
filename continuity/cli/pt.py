@@ -116,10 +116,11 @@ class FinishCommand(BaseFinishCommand, PivotalTrackerCommand):
     """Finish a story branch.
     """
 
-    def _merge_branch(self, branch):
+    def _merge_branch(self, branch, *args):
         """Merge a branch.
 
         :param branch: The name of the branch to merge.
+        :param *args: Merge argument list.
         """
         try:
             self.git.get_branch(branch)
@@ -128,7 +129,7 @@ class FinishCommand(BaseFinishCommand, PivotalTrackerCommand):
             self.git.get_branch(self.branch)
 
         message = "[finish #{0:d}]".format(self.story.id)
-        self.git.merge_branch(branch, message)
+        self.git.merge_branch(branch, message, args)
 
     def finalize(self):
         """Finalize this finish command.

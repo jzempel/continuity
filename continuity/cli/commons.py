@@ -142,7 +142,8 @@ class GitHubCommand(GitCommand):
     def issue(self):
         """Current branch issue accessor.
         """
-        configuration = self.git.get_configuration("branch", self.branch.name)
+        configuration = self.git.get_configuration("branch",
+                self.git.branch.name)
 
         if configuration:
             try:
@@ -227,18 +228,23 @@ class FinishCommand(GitCommand):
         parser.add_argument("parameters", help=SUPPRESS, nargs=REMAINDER)
         super(FinishCommand, self).__init__(parser, namespace)
 
-    def _merge_branch(self, branch):
+    def _merge_branch(self, branch, *args):
         """Merge a branch.
 
         :param branch: The name of the branch to merge.
+        :param *args: Merge argument list.
         """
         raise NotImplementedError
 
     def execute(self):
         """Execute this finish command.
         """
+        if self.branch.name == self.namespace.branch:
+            exit("Already up-to-date.")
+
         try:
-            self._merge_branch(self.namespace.branch)
+            self._merge_branch(self.namespace.branch,
+                    *self.namespace.parameters)
             puts("Merged branch '{0}' into {1}.".format(self.namespace.branch,
                 self.branch.name))
 

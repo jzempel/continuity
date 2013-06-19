@@ -126,7 +126,7 @@ def main():
         command = command_class(subparser, namespace)
         subparser.set_defaults(command=command)
 
-    version = "{0} version {1}".format(parser.prog, continuity.__version__)
+    version = "%(prog)s version {0}".format(continuity.__version__)
     parser.add_argument("--version", action="version", help=SUPPRESS,
             version=version)
     arguments = argv[1:] or ["--help"]

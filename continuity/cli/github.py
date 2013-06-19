@@ -23,10 +23,11 @@ class FinishCommand(BaseFinishCommand, GitHubCommand):
     """Finish an issue branch.
     """
 
-    def _merge_branch(self, branch):
+    def _merge_branch(self, branch, *args):
         """Merge a branch.
 
         :param branch: The name of the branch to merge.
+        :param *args: Merge argument list.
         """
         try:
             self.git.get_branch(branch)
@@ -35,7 +36,7 @@ class FinishCommand(BaseFinishCommand, GitHubCommand):
             self.git.get_branch(self.branch)
 
         message = "[close #{0:d}]".format(self.issue.number)
-        self.git.merge_branch(branch, message)
+        self.git.merge_branch(branch, message, args)
 
     def finalize(self):
         """Finalize this finish command.
