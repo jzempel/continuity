@@ -18,6 +18,7 @@ from continuity.pt import PivotalTracker
 from getpass import getpass
 from os import chmod, rename
 from os.path import exists
+from requests.exceptions import ConnectionError
 from sys import exit
 
 
@@ -43,6 +44,9 @@ class GitCommand(BaseCommand):
 
         try:
             self.execute()
+        except (ConnectionError, GitException):
+            puts("fatal: unable to access remote.")
+            self.exit()
         except (KeyboardInterrupt, EOFError):
             puts()
             self.exit()

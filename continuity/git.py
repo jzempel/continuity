@@ -85,7 +85,9 @@ class Git(object):
         try:
             ret_val = self.repo.git.execute(command)
         except GitCommandError, error:
-            raise GitException(error.stderr), None, exc_info()[2]
+            exception = GitException(error.stderror, error.status)
+
+            raise exception, None, exc_info()[2]
 
         return ret_val
 
@@ -170,7 +172,9 @@ class Git(object):
         try:
             ret_val = self.repo.git.execute(command)
         except GitCommandError, error:
-            raise GitException(error.stderr), None, exc_info()[2]
+            exception = GitException(error.stderr, error.status)
+
+            raise exception, None, exc_info()[2]
 
         return ret_val
 
