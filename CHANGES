@@ -1,6 +1,11 @@
 Changelog
 ---------
 
+Version 0.6.2
+~~~~~~~~~~~~~
+
+* Handled offline/disconnected client.
+
 Version 0.6.1
 ~~~~~~~~~~~~~
 
