@@ -68,7 +68,7 @@ issues (aliased by init as git-issues)
     List open issues.
 
 issue (aliased by init as git-issue)
-    Display branch information.
+    Display issue branch information.
 
 * with Pivotal Tracker configuration:
 
