@@ -147,8 +147,8 @@ class StartCommand(BaseStartCommand, GitHubCommand):
     """
 
     def __init__(self, parser, namespace):
-        parser.add_argument("-n", "--number", help="start the specified issue",
-                type=int)
+        parser.add_argument("number", help="start the specified issue",
+                nargs='?', type=int)
         parser.add_argument("-u", "--assignedtoyou", action="store_true",
                 help="only start issues assigned to you")
         super(StartCommand, self).__init__(parser, namespace)

@@ -198,7 +198,7 @@ class StartCommand(BaseStartCommand, PivotalTrackerCommand):
     """
 
     def __init__(self, parser, namespace):
-        parser.add_argument("-i", "--id", help="start the specified story",
+        parser.add_argument("id", help="start the specified story", nargs='?',
                 type=int)
         parser.add_argument("-m", "--mywork", action="store_true",
                 help="only start stories owned by you")

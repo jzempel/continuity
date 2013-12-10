@@ -295,7 +295,7 @@ class InitCommand(GitCommand):
         for command, command_class in commands.iteritems():
             if issubclass(command_class, GitCommand):
                 alias = "continuity" if command == "init" else command
-                self.aliases[alias] = "!continuity {0} \"$@\"".format(command)
+                self.aliases[alias] = "!continuity {0}".format(command)
 
         self.git.set_configuration("continuity", **self.continuity)
         self.git.set_configuration("github", **self.github)

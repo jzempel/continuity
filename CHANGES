@@ -1,6 +1,11 @@
 Changelog
 ---------
 
+Version 0.6.3
+~~~~~~~~~~~~~
+
+* Updated 'start' to take 'id/number' as a positional argument.
+
 Version 0.6.2
 ~~~~~~~~~~~~~
 
