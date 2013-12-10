@@ -1,5 +1,6 @@
 prefix = /usr/local
 bindir = $(prefix)/bin
+sysconfdir = $(prefix)/etc
 version = 1.5.1
 BUILD = build
 INSTALLER = pyinstaller-$(version)
@@ -13,10 +14,13 @@ override PYTHON_PATH = $(BUILD)/lib/python
 install: $(BUILD)/dist/$(EXENAME)
 	mkdir -p $(DESTDIR)$(bindir)/
 	mv -f $(BUILD)/dist/$(EXENAME) $(DESTDIR)$(bindir)/$(EXENAME)
+	mkdir -p $(DESTDIR)$(sysconfdir)/bash_completion.d/
+	cp -f completion.bash $(DESTDIR)$(sysconfdir)/bash_completion.d/$(EXENAME)
 
 uninstall: clean
 	rm -rf $(INSTALLER)
 	rm -f $(DESTDIR)$(bindir)/$(EXENAME)
+	rm -f $(DESTDIR)$(sysconfdir)/bash_completion.d/$(EXENAME)
 
 clean:
 	rm -rf $(BUILD)
