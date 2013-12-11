@@ -10,7 +10,8 @@
 """
 
 from .commons import (FinishCommand as BaseFinishCommand, GitHubCommand,
-        ReviewCommand as BaseReviewCommand, StartCommand as BaseStartCommand)
+        ReviewCommand as BaseReviewCommand, StartCommand as BaseStartCommand,
+        TasksCommand as BaseTasksCommand)
 from .utils import cached_property
 from clint.textui import colored, puts
 from continuity.github import Issue
@@ -236,3 +237,30 @@ class StartCommand(BaseStartCommand, GitHubCommand):
                     break
 
         return ret_val
+
+
+class TasksCommand(BaseTasksCommand, GitHubCommand):
+    """List and manage issue tasks.
+    """
+
+    def _get_tasks(self):
+        """Task list accessor.
+        """
+        return self.github.get_tasks(self.issue)
+
+    def _set_task(self, task, checked):
+        """Task mutator.
+
+        :param task: The task to update.
+        :param checked: ``True`` if the task is complete.
+        """
+        return self.github.set_task(self.issue, task, checked)
+
+    def finalize(self):
+        """Finalize this tasks command.
+        """
+        for index, task in enumerate(self.tasks):
+            checkmark = 'x' if task.is_checked else ' '
+            message = "[{0}] {1}. {2}".format(checkmark, index + 1,
+                    task.description)
+            puts(message)

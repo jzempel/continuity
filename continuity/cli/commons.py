@@ -549,6 +549,50 @@ class StartCommand(GitCommand):
         return ret_val
 
 
+class TasksCommand(GitCommand):
+    """List and manage branch tasks.
+
+    :param parser: Command-line argument parser.
+    :param namespace: Command-line argument namespace.
+    """
+
+    name = "tasks"
+
+    def __init__(self, parser, namespace):
+        parser.add_argument("-x", "--check", metavar="number")
+        parser.add_argument("-o", "--uncheck", metavar="number")
+        super(TasksCommand, self).__init__(parser, namespace)
+
+    def _get_tasks(self):
+        """Task list accessor.
+        """
+        raise NotImplementedError
+
+    def _set_task(self, task, checked):
+        """Task mutator.
+
+        :param task: The task to update.
+        :param checked: ``True`` if the task is complete.
+        """
+        raise NotImplementedError
+
+    def execute(self):
+        """Execute this tasks command.
+        """
+        self.tasks = self._get_tasks()
+
+        if self.namespace.check or self.namespace.uncheck:
+            index = int(self.namespace.check or self.namespace.uncheck) - 1
+
+            try:
+                task = self.tasks[index]
+                checked = True if self.namespace.check else False
+                task = self._set_task(task, checked)
+                self.tasks[index] = task
+            except IndexError:
+                exit("error: Task number out of range.")
+
+
 def get_commands(tracker=None):
     """Get the available continuity commands.
 
@@ -569,14 +613,15 @@ def get_commands(tracker=None):
 
         if tracker == "github":
             from .github import (FinishCommand, IssueCommand, IssuesCommand,
-                    ReviewCommand, StartCommand)
+                    ReviewCommand, StartCommand, TasksCommand)
 
             ret_val.update({
                 FinishCommand.name: FinishCommand,
                 IssueCommand.name: IssueCommand,
                 IssuesCommand.name: IssuesCommand,
                 ReviewCommand.name: ReviewCommand,
-                StartCommand.name: StartCommand
+                StartCommand.name: StartCommand,
+                TasksCommand.name: TasksCommand
             })
         else:
             from .pt import (BacklogCommand, FinishCommand, ReviewCommand,
@@ -591,12 +636,14 @@ def get_commands(tracker=None):
                 TasksCommand.name: TasksCommand
             })
     except GitException:
-        from .commons import FinishCommand, ReviewCommand, StartCommand
+        from .commons import (FinishCommand, ReviewCommand, StartCommand,
+                TasksCommand)
 
         ret_val.update({
             FinishCommand.name: FinishCommand,
             ReviewCommand.name: ReviewCommand,
-            StartCommand.name: StartCommand
+            StartCommand.name: StartCommand,
+            TasksCommand.name: TasksCommand
         })
 
     return ret_val

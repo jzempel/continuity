@@ -315,6 +315,36 @@ class PullRequest(DataObject):
         return self.data.get("html_url")
 
 
+class Task(DataObject):
+    """GitHub task object.
+    """
+
+    @property
+    def description(self):
+        """Task description accessor.
+        """
+        ret_val = self.data.get("description")
+
+        if ret_val:
+            ret_val = ret_val.strip()
+
+        return ret_val
+
+    @property
+    def is_checked(self):
+        """Determine if this task is checked.
+        """
+        value = self.data.get("checked")
+
+        return value == 'x'
+
+    @property
+    def number(self):
+        """Task number accessor.
+        """
+        return self.data.get("number")
+
+
 class User(IDObject):
     """GitHub user object.
     """
@@ -369,6 +399,8 @@ class GitHub(object):
 
     expression = r"^.+github\.com[/:](?P<repository>\w+/\w+)\.git$"
     PATTERN_REPOSITORY = re.compile(expression, re.U)
+    expression = r"^([-*+]|\d+\.)\s+\[(?P<checked>[ x])\]\s+(?P<description>\S.*)$"  # NOQA
+    PATTERN_TASK = re.compile(expression, re.M | re.U)
     URI_TEMPLATE = "https://api.github.com/{0}"
 
     def __init__(self, git, token):
@@ -538,7 +570,7 @@ class GitHub(object):
     def get_issues(self, pull_requests=False, **parameters):
         """Get issues.
 
-        :param pull_requests: Default `False`. Determine wheter to include
+        :param pull_requests: Default `False`. Determine whether to include
             pull requests.
         :param parameters: Parameter keyword-arguments.
         """
@@ -577,6 +609,24 @@ class GitHub(object):
 
         for milestone in milestones:
             ret_val.append(Milestone(milestone))
+
+        return ret_val
+
+    @staticmethod
+    def get_tasks(issue):
+        """Get the tasks for the given issue.
+
+        :param issue: The issue to use.
+        """
+        ret_val = []
+
+        if issue.description:
+            for index, match in enumerate(
+                    GitHub.PATTERN_TASK.finditer(issue.description)):
+                data = match.groupdict()
+                data["number"] = index + 1
+                task = Task(data)
+                ret_val.append(task)
 
         return ret_val
 
@@ -626,3 +676,34 @@ class GitHub(object):
         issue = self._repo_request("patch", resource, data=data)
 
         return Issue(issue)
+
+    def set_task(self, issue, task, checked):
+        """Set the completion of the given task.
+
+        :param story: The issue the task is a part of.
+        :param task: The task to update.
+        :param checked: ``True`` to check the story as completed, otherwise
+            ``False``.
+        """
+        if issue.description:
+            count = [1]
+
+            def replace(match):
+                ret_val = match.group(0)
+
+                if count[0] == task.number:
+                    old = "[ ]" if checked else "[x]"
+                    new = "[x]" if checked else "[ ]"
+                    ret_val = ret_val.replace(old, new, 1)
+
+                count[0] += 1
+
+                return ret_val
+
+            description = self.PATTERN_TASK.sub(replace, issue.description)
+            data = {"body": description}
+            resource = "issues/{0}".format(issue.number)
+            self._repo_request("patch", resource, data=data)
+            task.data["checked"] = 'x' if checked else ' '
+
+        return task

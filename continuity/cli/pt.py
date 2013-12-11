@@ -10,7 +10,8 @@
 """
 
 from .commons import (FinishCommand as BaseFinishCommand, GitCommand,
-        ReviewCommand as BaseReviewCommand, StartCommand as BaseStartCommand)
+        ReviewCommand as BaseReviewCommand, StartCommand as BaseStartCommand,
+        TasksCommand as BaseTasksCommand)
 from .utils import cached_property, prompt
 from clint.textui import colored, puts
 from continuity.pt import PivotalTracker, Story
@@ -284,33 +285,27 @@ class StartCommand(BaseStartCommand, PivotalTrackerCommand):
         return ret_val
 
 
-class TasksCommand(PivotalTrackerCommand):
+class TasksCommand(BaseTasksCommand, PivotalTrackerCommand):
     """List and manage story tasks.
-
-    :param parser: Command-line argument parser.
-    :param namespace: Command-line argument namespace.
     """
 
-    name = "tasks"
-
-    def __init__(self, parser, namespace):
-        parser.add_argument("-x", "--check", metavar="number")
-        parser.add_argument("-o", "--uncheck", metavar="number")
-        super(TasksCommand, self).__init__(parser, namespace)
-
-    def execute(self):
-        """Execute the tasks command.
+    def _get_tasks(self):
+        """Task list accessor.
         """
-        tasks = self.pt.get_tasks(self.project, self.story)
+        return self.pt.get_tasks(self.project, self.story)
 
-        if self.namespace.check or self.namespace.uncheck:
-            number = int(self.namespace.check or self.namespace.uncheck) - 1
-            task = tasks[number]
-            checked = True if self.namespace.check else False
-            task = self.pt.set_task(self.project, self.story, task, checked)
-            tasks[number] = task
+    def _set_task(self, task, checked):
+        """Task mutator.
 
-        for task in tasks:
+        :param task: The task to update.
+        :param checked: ``True`` if the task is complete.
+        """
+        return self.pt.set_task(self.project, self.story, task, checked)
+
+    def finalize(self):
+        """Finalize this tasks command.
+        """
+        for task in self.tasks:
             checkmark = 'x' if task.is_checked else ' '
             message = "[{0}] {1}. {2}".format(checkmark, task.number,
                     task.description)
