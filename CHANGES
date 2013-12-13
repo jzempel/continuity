@@ -1,6 +1,11 @@
 Changelog
 ---------
 
+Version 0.7.1
+~~~~~~~~~~~~~
+
+* Updated to version 2.1 of PyInstaller
+
 Version 0.7
 ~~~~~~~~~~~
 
