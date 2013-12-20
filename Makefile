@@ -24,6 +24,8 @@ uninstall: clean
 
 clean:
 	rm -rf $(BUILD)
+	rm -rf $(EXENAME).egg-info
+	rm -rf dist
 	rm -f logdict*.final.*.log
 
 $(BUILD)/dist/$(EXENAME): export PYTHONPATH = $(PYTHON_PATH)
