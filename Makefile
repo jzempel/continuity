@@ -26,6 +26,7 @@ clean:
 	rm -rf $(BUILD)
 	rm -rf $(EXENAME).egg-info
 	rm -rf dist
+	rm -rf docs/_build
 	rm -f logdict*.final.*.log
 
 $(BUILD)/dist/$(EXENAME): export PYTHONPATH = $(PYTHON_PATH)

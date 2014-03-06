@@ -11,7 +11,19 @@
 """
 
 from setuptools import setup
+from sys import argv
 import continuity
+
+install_requires = [
+    "clint",
+    "GitPython",
+    "py-getch",
+    "requests"
+]
+
+if "develop" in argv:
+    install_requires.append('Sphinx')
+    install_requires.append('Sphinx-PyPI-upload')
 
 setup(
     name=continuity.__name__,
@@ -24,17 +36,7 @@ setup(
     long_description=__doc__,
     packages=["continuity"],
     include_package_data=True,
-    install_requires=[
-        "clint",
-        "GitPython",
-            # "gitdb",
-            # "async",
-            # "smmap",
-        "py-getch",
-        "requests",
-            # "certifi",
-            # "chardet"
-    ],
+    install_requires=install_requires,
     entry_points={
         "console_scripts": [
             "continuity = continuity.cli:main"

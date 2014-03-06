@@ -62,6 +62,9 @@ review (aliased by init as git-review)
 finish (aliased by init as git-finish)
     Finish a story/issue branch.
 
+tasks (aliased by init as git-tasks)
+    List and manage story/issue tasks.
+
 * with GitHub Issues configuration:
 
 issues (aliased by init as git-issues)
@@ -77,6 +80,3 @@ backlog (aliased by init as git-backlog)
 
 story (aliased by init as git-story)
     Display story branch information.
-
-tasks (aliased by init as git-tasks)
-    List and manage story tasks.

@@ -4,3 +4,4 @@
 pyinstaller*
 build
 dist
+docs/_build
