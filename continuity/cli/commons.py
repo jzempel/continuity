@@ -246,26 +246,35 @@ class FinishCommand(GitCommand):
         if self.branch.name == self.namespace.branch:
             exit("Already up-to-date.")
 
-        try:
-            self._merge_branch(self.namespace.branch,
-                    *self.namespace.parameters)
-            puts("Merged branch '{0}' into {1}.".format(self.namespace.branch,
-                self.branch.name))
+        configuration = self.git.get_configuration("branch",
+                self.namespace.branch)
+        branch = configuration.get("integration-branch",
+                self.get_value("continuity", "integration-branch"))
 
+        if branch == self.branch.name:
             try:
-                self.git.delete_branch(self.namespace.branch)
-                puts("Deleted branch {0}.".format(self.namespace.branch))
-            except GitException:
-                exit("conflict: Fix conflicts and then commit the result.")
-        except GitException, error:
-            paths = self.git.repo.index.unmerged_blobs()
+                self._merge_branch(self.namespace.branch,
+                        *self.namespace.parameters)
+                puts("Merged branch '{0}' into {1}.".format(
+                    self.namespace.branch, self.branch.name))
 
-            if paths:
-                for path in paths:
-                    puts_err("Merge conflict: {0}".format(path))
-            else:
-                puts_err(error.message)
-                exit(error.status)
+                try:
+                    self.git.delete_branch(self.namespace.branch)
+                    puts("Deleted branch {0}.".format(self.namespace.branch))
+                except GitException:
+                    exit("conflict: Fix conflicts and then commit the result.")
+            except GitException, error:
+                paths = self.git.repo.index.unmerged_blobs()
+
+                if paths:
+                    for path in paths:
+                        puts_err("Merge conflict: {0}".format(path))
+                else:
+                    puts_err(error.message)
+                    exit(error.status)
+        else:
+            message = "error: Attempted finish from non-integration branch; switch to '{0}'."  # NOQA
+            exit(message.format(branch))
 
 
 class InitCommand(GitCommand):
