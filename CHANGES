@@ -6,6 +6,7 @@ Version 0.7.1
 
 * Updated to version 2.1 of PyInstaller
 * Prevent finish from non-integration branch.
+* Added man page to installer.
 
 Version 0.7
 ~~~~~~~~~~~

@@ -18,12 +18,12 @@ install_requires = [
     "clint",
     "GitPython",
     "py-getch",
-    "requests"
+    "requests",
+    "Sphinx"
 ]
 
 if "develop" in argv:
-    install_requires.append('Sphinx')
-    install_requires.append('Sphinx-PyPI-upload')
+    install_requires.append("Sphinx-PyPI-upload")
 
 setup(
     name=continuity.__name__,

@@ -1,5 +1,6 @@
 prefix = /usr/local
 bindir = $(prefix)/bin
+sharedir = $(prefix)/share
 sysconfdir = $(prefix)/etc
 version = 2.1
 BUILD = build
@@ -16,11 +17,14 @@ install: $(BUILD)/dist/$(EXENAME)
 	mv -f $(BUILD)/dist/$(EXENAME) $(DESTDIR)$(bindir)/$(EXENAME)
 	mkdir -p $(DESTDIR)$(sysconfdir)/bash_completion.d/
 	cp -f completion.bash $(DESTDIR)$(sysconfdir)/bash_completion.d/$(EXENAME)
+	mkdir -p $(DESTDIR)$(sharedir)/man/man1/
+	cp -f $(BUILD)/sphinx/man/$(EXENAME).1 $(DESTDIR)$(sharedir)/man/man1/$(EXENAME).1
 
 uninstall: clean
 	rm -rf $(INSTALLER)
 	rm -f $(DESTDIR)$(bindir)/$(EXENAME)
 	rm -f $(DESTDIR)$(sysconfdir)/bash_completion.d/$(EXENAME)
+	rm -f $(DESTDIR)$(sharedir)/man/man1/$(EXENAME).1
 
 clean:
 	rm -rf $(BUILD)
@@ -37,6 +41,7 @@ $(BUILD)/dist/$(EXENAME): $(BUILD) | $(INSTALLER)
 $(BUILD):
 	mkdir -p $(PYTHON_PATH)/
 	@PYTHONPATH=$(PYTHON_PATH) $(PYTHON) setup.py install --home $(BUILD)
+	@PYTHONPATH=$(PYTHON_PATH) $(PYTHON) setup.py build_sphinx --build-dir $(BUILD)/sphinx --builder man
 
 $(INSTALLER):
 	curl -L -o pyinstaller.tar.gz https://github.com/pyinstaller/pyinstaller/archive/v$(version).tar.gz
