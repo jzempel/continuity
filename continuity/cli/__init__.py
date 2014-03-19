@@ -28,7 +28,7 @@ class ArgumentParser(BaseArgumentParser):
     def __init__(self, *args, **kwargs):
         kwargs.setdefault("add_help", False)
         super(ArgumentParser, self).__init__(*args, **kwargs)
-        self.add_argument("--help", action="help", help=SUPPRESS)
+        self.add_argument("-h", "--help", action="help", help=SUPPRESS)
 
 
 class HelpFormatter(BaseHelpFormatter):
