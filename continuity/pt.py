@@ -88,6 +88,31 @@ class IDElement(Element):
         return int(value)
 
 
+class Comment(IDElement):
+    """Pivotal Tracker comment object.
+
+    :param member: Comment DOM element.
+    """
+
+    @property
+    def author(self):
+        """Comment author accessor.
+        """
+        return self.child("author").value
+
+    @datetime_property
+    def created(self):
+        """Comment created accessor.
+        """
+        return self.child("noted_at").value
+
+    @property
+    def text(self):
+        """Comment text accessor.
+        """
+        return self.child("text").value
+
+
 class Iteration(IDElement):
     """Pivotal Tracker iteration object.
 
@@ -214,6 +239,19 @@ class Story(IDElement):
     TYPE_CHORE = "chore"
     TYPE_FEATURE = "feature"
     TYPE_RELEASE = "release"
+
+    @property
+    def comments(self):
+        """Story comments accessor.
+        """
+        ret_val = []
+        comments = self.child("notes")
+
+        for comment in comments.children("note"):
+            comment = Comment(comment)
+            ret_val.append(comment)
+
+        return ret_val
 
     @datetime_property
     def created(self):

@@ -1,6 +1,11 @@
 Changelog
 ---------
 
+Version 0.7.3
+~~~~~~~~~~~~~
+
+* Added issue/story '--comments' command argument.
+
 Version 0.7.2
 ~~~~~~~~~~~~~
 

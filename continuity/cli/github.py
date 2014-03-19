@@ -50,9 +50,17 @@ class FinishCommand(BaseFinishCommand, GitHubCommand):
 
 class IssueCommand(GitHubCommand):
     """Display issue branch information.
+
+    :param parser: Command-line argument parser.
+    :param namespace: Command-line argument namespace.
     """
 
     name = "issue"
+
+    def __init__(self, parser, namespace):
+        parser.add_argument("-c", "--comments", action="store_true",
+                help="include issue comments")
+        super(IssueCommand, self).__init__(parser, namespace)
 
     def execute(self):
         """Execute this issue command.
@@ -72,6 +80,14 @@ class IssueCommand(GitHubCommand):
             self.issue.user.login,
             self.issue.created.strftime("%d %b %Y, %I:%M%p"))))
         puts(colored.white(self.issue.url))
+
+        if self.namespace.comments:
+            for comment in self.github.get_comments(self.issue):
+                puts()
+                puts(colored.yellow("{0} ({1})".format(
+                    comment.user.login, comment.created)))
+                puts()
+                puts(str(comment))
 
 
 class IssuesCommand(GitHubCommand):

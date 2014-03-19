@@ -162,9 +162,17 @@ class ReviewCommand(BaseReviewCommand, PivotalTrackerCommand):
 
 class StoryCommand(PivotalTrackerCommand):
     """Display story branch information.
+
+    :param parser: Command-line argument parser.
+    :param namespace: Command-line argument namespace.
     """
 
     name = "story"
+
+    def __init__(self, parser, namespace):
+        parser.add_argument("-c", "--comments", action="store_true",
+                help="include story comments")
+        super(StoryCommand, self).__init__(parser, namespace)
 
     def execute(self):
         """Execute the story command.
@@ -189,6 +197,14 @@ class StoryCommand(PivotalTrackerCommand):
             self.story.requester,
             self.story.created.strftime("%d %b %Y, %I:%M%p"))))
         puts(colored.white(self.story.url))
+
+        if self.namespace.comments:
+            for comment in self.story.comments:
+                puts()
+                puts(colored.yellow("{0} ({1})".format(comment.author,
+                    comment.created)))
+                puts()
+                puts(comment.text)
 
 
 class StartCommand(BaseStartCommand, PivotalTrackerCommand):

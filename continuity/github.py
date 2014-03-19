@@ -76,6 +76,42 @@ class IDObject(DataObject):
         return self.data.get("id")
 
 
+class Comment(IDObject):
+    """GitHub comment object.
+    """
+
+    def __str__(self):
+        """Comment string representation.
+        """
+        return self.data.get("body")
+
+    @datetime_property
+    def created(self):
+        """Comment created accessor.
+        """
+        return self.data.get("created_at")
+
+    @datetime_property
+    def updated(self):
+        """Comment updated accessor.
+        """
+        return self.data.get("updated_at")
+
+    @property
+    def url(self):
+        """Comment URL accessor.
+        """
+        return self.data.get("html_url")
+
+    @property
+    def user(self):
+        """Comment user accessor.
+        """
+        user = self.data.get("user")
+
+        return User(user)
+
+
 class Issue(IDObject):
     """GitHub issue object.
     """
@@ -536,6 +572,20 @@ class GitHub(object):
             ret_val = response["token"]
         except GitHubException:
             ret_val = None
+
+        return ret_val
+
+    def get_comments(self, issue):
+        """Get issue comments.
+
+        :param issue: The issue to get comments for.
+        """
+        ret_val = []
+        resource = "issues/{0}/comments".format(issue.number)
+        comments = self._repo_request("get", resource)
+
+        for comment in comments:
+            ret_val.append(Comment(comment))
 
         return ret_val
 

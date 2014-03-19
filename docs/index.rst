@@ -107,6 +107,9 @@ issue
 
     Alias: **git-issue**
 
+    **-c, --comments**
+        Include issue comments.
+
 issues
     List open issues. Output is formatted to include issue ID, title, status,
     and assignee.
@@ -133,3 +136,6 @@ story
     branch created via **start**.
 
     Alias: **git-story**
+
+    **-c, --comments**
+        Include story comments.
