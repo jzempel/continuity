@@ -18,13 +18,22 @@ install: $(BUILD)/dist/$(EXENAME)
 	mkdir -p $(DESTDIR)$(sysconfdir)/bash_completion.d/
 	cp -f completion.bash $(DESTDIR)$(sysconfdir)/bash_completion.d/$(EXENAME)
 	mkdir -p $(DESTDIR)$(sharedir)/man/man1/
-	cp -f $(BUILD)/sphinx/man/$(EXENAME).1 $(DESTDIR)$(sharedir)/man/man1/$(EXENAME).1
+	cp -f $(BUILD)/sphinx/man/*.1 $(DESTDIR)$(sharedir)/man/man1/
 
 uninstall: clean
 	rm -rf $(INSTALLER)
 	rm -f $(DESTDIR)$(bindir)/$(EXENAME)
 	rm -f $(DESTDIR)$(sysconfdir)/bash_completion.d/$(EXENAME)
 	rm -f $(DESTDIR)$(sharedir)/man/man1/$(EXENAME).1
+	rm -f $(DESTDIR)$(sharedir)/man/man1/git-backlog.1
+	rm -f $(DESTDIR)$(sharedir)/man/man1/git-continuity.1
+	rm -f $(DESTDIR)$(sharedir)/man/man1/git-finish.1
+	rm -f $(DESTDIR)$(sharedir)/man/man1/git-issue.1
+	rm -f $(DESTDIR)$(sharedir)/man/man1/git-issues.1
+	rm -f $(DESTDIR)$(sharedir)/man/man1/git-review.1
+	rm -f $(DESTDIR)$(sharedir)/man/man1/git-start.1
+	rm -f $(DESTDIR)$(sharedir)/man/man1/git-story.1
+	rm -f $(DESTDIR)$(sharedir)/man/man1/git-tasks.1
 
 clean:
 	rm -rf $(BUILD)

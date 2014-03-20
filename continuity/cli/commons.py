@@ -32,6 +32,17 @@ class BaseCommand(object):
     def __init__(self, parser, namespace):
         self.namespace = namespace
 
+    @classmethod
+    def _help(cls):
+        """Get help text for this command.
+        """
+        try:
+            ret_val = getattr(cls, "help")
+        except AttributeError:
+            ret_val = cls.__doc__.split('\n', 1)[0][:-1]
+
+        return ret_val
+
 
 class GitCommand(BaseCommand):
     """Base Git command.
@@ -568,8 +579,8 @@ class TasksCommand(GitCommand):
     name = "tasks"
 
     def __init__(self, parser, namespace):
-        parser.add_argument("-x", "--check", metavar="number")
-        parser.add_argument("-o", "--uncheck", metavar="number")
+        parser.add_argument("-x", "--check", metavar="<number>")
+        parser.add_argument("-o", "--uncheck", metavar="<number>")
         super(TasksCommand, self).__init__(parser, namespace)
 
     def _get_tasks(self):

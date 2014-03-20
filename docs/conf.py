@@ -9,9 +9,24 @@
     :license: BSD, see LICENSE for more details.
 """
 
+from continuity.cli.commons import (FinishCommand, InitCommand, ReviewCommand,
+        StartCommand, TasksCommand)
+from continuity.cli.github import IssueCommand, IssuesCommand
+from continuity.cli.pt import BacklogCommand, StoryCommand
 from datetime import datetime
 import continuity
 
+_commands = [
+    BacklogCommand,
+    FinishCommand,
+    InitCommand,
+    IssueCommand,
+    IssuesCommand,
+    ReviewCommand,
+    StartCommand,
+    StoryCommand,
+    TasksCommand
+]
 _description = "continuous dev inspired by GitHub Flow"
 master_doc = "index"
 
@@ -35,6 +50,19 @@ man_pages = [(
     [continuity.__author__],
     1
 )]
+
+for _command in _commands:
+    _name = "git-{0}".format(continuity.__name__ if _command == InitCommand
+            else _command.name)
+    man_page = (
+        _name,
+        _name,
+        _command._help(),
+        [continuity.__author__],
+        1
+    )
+    man_pages.append(man_page)
+
 project = continuity.__name__
 pygments_style = "sphinx"
 release = continuity.__version__

@@ -112,15 +112,12 @@ def main():
 
     for command_name in sorted(commands.iterkeys()):
         command_class = commands[command_name]
-        kwargs = {}
-
-        try:
-            help = getattr(command_class, "help")
-        except AttributeError:
-            help = command_class.__doc__.split('\n', 1)[0][:-1]
+        help = command_class._help()
 
         if help is not SUPPRESS:
-            kwargs["help"] = help
+            kwargs = {"help": help}
+        else:
+            kwargs = {}
 
         subparser = subparsers.add_parser(command_name, **kwargs)
         command = command_class(subparser, namespace)

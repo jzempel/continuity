@@ -64,7 +64,7 @@ class PivotalTrackerCommand(GitCommand):
 
 
 class BacklogCommand(PivotalTrackerCommand):
-    """List backlog stories.
+    """List unstarted backlog stories.
 
     :param parser: Command-line argument parser.
     :param namespace: Command-line argument namespace.
