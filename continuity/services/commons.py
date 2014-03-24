@@ -71,7 +71,6 @@ class RemoteService(object):
         if "data" in kwargs:
             kwargs["data"] = dumps(kwargs["data"])
 
-        print url, kwargs
         response = request(method, url, **kwargs)
         response.raise_for_status()
 

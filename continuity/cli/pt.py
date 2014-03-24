@@ -150,7 +150,12 @@ class FinishCommand(BaseFinishCommand, PivotalTrackerCommand):
     def finalize(self):
         """Finalize this finish command.
         """
-        self.pt.set_story(self.project, self.story, Story.STATE_FINISHED)
+        if self.story.type == Story.TYPE_CHORE:
+            state = Story.STATE_ACCEPTED
+        else:
+            state = Story.STATE_FINISHED
+
+        self.pt.set_story(self.project, self.story, state)
         puts("Finished story #{0:d}.".format(self.story.id))
         super(FinishCommand, self).finalize()
 
@@ -240,7 +245,7 @@ class StartCommand(BaseStartCommand, PivotalTrackerCommand):
         """Execute this start command.
         """
         if self.story:
-            puts("{0}: {1}".format(self.story.type.title(), self.story.name))
+            puts("Story: {0}".format(self.story.name))
 
             if not self.story.owners:
                 self.story = self.pt.set_story(self.project, self.story,
@@ -283,16 +288,18 @@ class StartCommand(BaseStartCommand, PivotalTrackerCommand):
         if story_id and exclusive:
             puts("Retrieving story #{0} from Pivotal Tracker for {1}...".
                 format(story_id, self.owner))
-            filter = "id:{0} owner:{1} state:unstarted,rejected".format(
-                story_id, self.owner)
+            filter = "id:{0} owner:{1} state:unstarted,rejected -estimate:-1".\
+                format(story_id, self.owner)
         elif story_id:
             puts("Retrieving story #{0} from Pivotal Tracker...".format(
                 story_id))
-            filter = "id:{0} state:unstarted,rejected".format(story_id)
+            filter = "id:{0} state:unstarted,rejected -estimate:-1".\
+                format(story_id)
         elif exclusive:
             puts("Retrieving next story from Pivotal Tracker for {0}...".
                 format(self.owner))
-            filter = "owner:{0} state:unstarted,rejected".format(self.owner)
+            filter = "owner:{0} state:unstarted,rejected -estimate:-1".\
+                format(self.owner)
         else:
             filter = None
 
@@ -307,8 +314,9 @@ class StartCommand(BaseStartCommand, PivotalTrackerCommand):
             for story in stories:
                 if story.type in types and story.state in states and \
                         (not story.owners or self.owner in story.owners):
-                    ret_val = story
-                    break
+                    if story.type != Story.TYPE_FEATURE or story.estimate:
+                        ret_val = story
+                        break
             else:
                 ret_val = None
 

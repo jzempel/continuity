@@ -441,7 +441,7 @@ class PivotalTrackerService(RemoteService):
         :param owner: Default `None`. Optional story owner.
         """
         resource = "projects/{0:d}/stories/{1:d}".format(project.id, story.id)
-        data = {"current_state": state}
+        data = {"current_state": state, "fields": Story.FIELDS}
 
         if owner:
             data["owner_ids"] = [owner.id]
