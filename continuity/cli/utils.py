@@ -12,31 +12,8 @@
 from clint.textui import puts
 from curses.ascii import ctrl, CR, EOT, ETX, isctrl, LF
 from getch.getch import getch
-
-
-class cached_property(object):
-    """Cached property decorator.
-
-    :param function: The function to decorate.
-    """
-
-    def __init__(self, function):
-        self.__doc__ = function.__doc__
-        self.__module__ = function.__module__
-        self.__name__ = function.__name__
-        self.function = function
-        self.attribute = "_{0}".format(self.__name__)
-
-    def __get__(self, instance, owner):
-        """Get the attribute of the given instance.
-
-        :param instance: The instance to get an attribute for.
-        :param owner: The instance owner class.
-        """
-        if not hasattr(instance, self.attribute):
-            setattr(instance, self.attribute, self.function(instance))
-
-        return getattr(instance, self.attribute)
+from pydoc import pipepager
+from StringIO import StringIO
 
 
 def confirm(message, default=False):
@@ -61,6 +38,17 @@ def confirm(message, default=False):
         ret_val = False
 
     return ret_val
+
+
+def less(text):
+    """View text via 'less' terminal pager.
+
+    :param text: The text to view.
+    """
+    if isinstance(text, StringIO):
+        text = text.getvalue()
+
+    pipepager(text, cmd="less -FRSX")
 
 
 def prompt(message, default=None, characters=None):

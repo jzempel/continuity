@@ -1,6 +1,14 @@
 Changelog
 ---------
 
+Version 0.7.5
+~~~~~~~~~~~~~
+
+* Updated to GitHub API v3.
+* Updated to Pivotal Tracker REST API v5.
+* Refactored services.
+* Improved Pivotal Tracker no-arg 'story' selection.
+
 Version 0.7.4
 ~~~~~~~~~~~~~
 

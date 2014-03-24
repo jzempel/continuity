@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 """
-    continuity.github
-    ~~~~~~~~~~~~~~~~~
+    continuity.services.github
+    ~~~~~~~~~~~~~~~~~~~~~~~~~~
 
     GitHub API.
 
@@ -10,70 +10,10 @@
 """
 
 from __future__ import division
-from datetime import datetime
-from json import dumps, loads
-from requests import request, RequestException
+from .commons import DataObject, IDObject, RemoteService, ServiceException
+from .utils import datetime_property
+from requests import RequestException
 import re
-
-
-class datetime_property(object):
-    """Date/time property decorator.
-
-    :param function: The function to decorate.
-    """
-
-    FORMAT_DATETIME = "%Y-%m-%dT%H:%M:%SZ"
-
-    def __init__(self, function):
-        self.function = function
-
-    def __get__(self, instance, owner):
-        """Attribute accessor - converts a GitHub date/time value into a Python
-        datetime object.
-
-        :param instance: The instance to get an attribute for.
-        :param owner: The owner class.
-        """
-        try:
-            value = self.function(instance)
-            ret_val = datetime.strptime(value, self.FORMAT_DATETIME)
-        except AttributeError:
-            ret_val = None
-
-        return ret_val
-
-
-class DataObject(object):
-    """GitHub data object.
-
-    :param data: Object data dictionary.
-    """
-
-    def __init__(self, data):
-        self.data = data
-
-
-class IDObject(DataObject):
-    """GitHub ID object.
-    """
-
-    def __cmp__(self, other):
-        """Compare ID objects.
-
-        :param other: The object to compare to.
-        """
-        return cmp(self.id, hash(other))
-
-    def __hash__(self):
-        """ID object hash value.
-        """
-        return self.id
-
-    @property
-    def id(self):
-        """ID accessor.
-        """
-        return self.data.get("id")
 
 
 class Comment(IDObject):
@@ -403,7 +343,7 @@ class User(IDObject):
         return self.data.get("html_url")
 
 
-class GitHubException(Exception):
+class GitHubException(ServiceException):
     """Base GitHub exception.
     """
 
@@ -422,11 +362,12 @@ class GitHubRequestException(GitHubException):
             error = self.args[0]
 
             if isinstance(error, RequestException):
-                self.response = error.response
-                self.json = loads(self.response.text)
+                if hasattr(error, "response"):
+                    self.response = error.response
+                    self.json = self.response.json()
 
 
-class GitHub(object):
+class GitHubService(RemoteService):
     """GitHub service.
 
     :param git: Git object instance.
@@ -437,9 +378,10 @@ class GitHub(object):
     PATTERN_REPOSITORY = re.compile(expression, re.U)
     expression = r"^([-*+]|\d+\.)\s+\[(?P<checked>[ x])\]\s+(?P<description>\S.*)$"  # NOQA
     PATTERN_TASK = re.compile(expression, re.M | re.U)
-    URI_TEMPLATE = "https://api.github.com/{0}"
 
     def __init__(self, git, token):
+        super(GitHubService, self).__init__("https://api.github.com")
+
         if git.remote and "github.com" in git.remote.url:
             self.git = git
             self.token = token
@@ -460,35 +402,31 @@ class GitHub(object):
         headers["Authorization"] = "token {0}".format(self.token)
         kwargs["headers"] = headers
 
-        return GitHub._request(method, path, **kwargs)
+        return self._request(method, path, **kwargs)
 
-    @staticmethod
-    def _request(method, resource, **kwargs):
+    def _request(self, method, resource, **kwargs):
         """Send a GitHub request.
 
         :param method: The HTTP method.
         :param resource: The URI resource.
         :param kwargs: Request keyword-arguments.
         """
-        url = GitHub.URI_TEMPLATE.format(resource)
-        kwargs["verify"] = False
-
-        if "data" in kwargs:
-            kwargs["data"] = dumps(kwargs["data"])
+        headers = kwargs.get("headers", {})
+        headers["Accept"] = "application/vnd.github.v3+json"
+        kwargs["headers"] = headers
 
         if "params" in kwargs:
             for key, value in kwargs["params"].items():
                 if value is None:
                     kwargs["params"][key] = "none"
 
-        response = request(method, url, **kwargs)
-
         try:
-            response.raise_for_status()
+            ret_val = super(GitHubService, self)._request(method, resource,
+                    **kwargs)
         except RequestException, e:
             raise GitHubRequestException(e)
 
-        return loads(response.content)
+        return ret_val
 
     def add_labels(self, issue, *names):
         """Add a labels to an issue.
@@ -549,8 +487,7 @@ class GitHub(object):
 
         return PullRequest(pull_request)
 
-    @staticmethod
-    def create_token(user, password, name, url=None, scopes=["repo"]):
+    def create_token(self, user, password, name, url=None, scopes=["repo"]):
         """Create an OAuth token for the given user.
 
         :param user: The GitHub user to create a token for.
@@ -567,7 +504,7 @@ class GitHub(object):
         auth = (user, password)
 
         try:
-            response = GitHub._request("post", "authorizations", data=data,
+            response = self._request("post", "authorizations", data=data,
                     auth=auth)
             ret_val = response["token"]
         except GitHubException:
@@ -629,7 +566,7 @@ class GitHub(object):
         issues = self._repo_request("get", "issues", params=parameters)
 
         for issue in issues:
-            if pull_requests or issue["pull_request"]["html_url"] is None:
+            if pull_requests or issue.get("pull_request") is None:
                 ret_val.append(Issue(issue))
 
         return ret_val
@@ -672,7 +609,7 @@ class GitHub(object):
 
         if issue.description:
             for index, match in enumerate(
-                    GitHub.PATTERN_TASK.finditer(issue.description)):
+                    GitHubService.PATTERN_TASK.finditer(issue.description)):
                 data = match.groupdict()
                 data["number"] = index + 1
                 task = Task(data)
@@ -690,7 +627,7 @@ class GitHub(object):
         headers = {"Authorization": "token {0}".format(self.token)}
 
         try:
-            user = GitHub._request("get", resource, headers=headers)
+            user = self._request("get", resource, headers=headers)
             ret_val = User(user)
         except GitHubException:
             ret_val = None

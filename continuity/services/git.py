@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 """
-    continuity.git
-    ~~~~~~~~~~~~~~
+    continuity.services.git
+    ~~~~~~~~~~~~~~~~~~~~~~~
 
     Git API.
 
@@ -10,6 +10,7 @@
 """
 
 from __future__ import absolute_import
+from .commons import ServiceException
 from ConfigParser import NoSectionError
 from git.exc import GitCommandError, InvalidGitRepositoryError, NoSuchPathError
 from git.repo.base import Repo
@@ -17,7 +18,7 @@ from os import environ
 from sys import exc_info
 
 
-class GitException(Exception):
+class GitException(ServiceException):
     """Base git exception.
 
     :param message: Exception message.
@@ -29,7 +30,7 @@ class GitException(Exception):
         self.status = status
 
 
-class Git(object):
+class GitService(object):
     """Git service.
 
     :param path: Default `None`. The path to the git repository. Defaults to

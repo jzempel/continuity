@@ -12,10 +12,10 @@
 from .commons import (FinishCommand as BaseFinishCommand, GitHubCommand,
         ReviewCommand as BaseReviewCommand, StartCommand as BaseStartCommand,
         TasksCommand as BaseTasksCommand)
-from .utils import cached_property
+from .utils import less
 from clint.textui import colored, puts
-from continuity.github import Issue
-from pydoc import pipepager
+from continuity.services.github import Issue
+from continuity.services.utils import cached_property
 from StringIO import StringIO
 from sys import exit
 
@@ -140,7 +140,7 @@ class IssuesCommand(GitHubCommand):
             message = "{0}: {1}\n".format(number, title.strip())
             output.write(message)
 
-        pipepager(output.getvalue(), cmd="less -FRSX")
+        less(output)
 
 
 class ReviewCommand(BaseReviewCommand):

@@ -1,5 +1,6 @@
 include CHANGES completion.bash LICENSE Makefile
 include continuity/cli/*.py
+include continuity/services/*.py
 include docs/conf.py
 include docs/*.rst
 include main.py

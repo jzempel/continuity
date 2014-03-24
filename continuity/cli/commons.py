@@ -9,12 +9,14 @@
     :license: BSD, see LICENSE for more details.
 """
 
-from .utils import cached_property, confirm, prompt
+from .utils import confirm, prompt
 from argparse import REMAINDER, SUPPRESS
 from clint.textui import colored, indent, puts, puts_err
-from continuity.git import Git, GitException
-from continuity.github import GitHub, GitHubException
-from continuity.pt import PivotalTracker
+from continuity.services.commons import ServiceException
+from continuity.services.git import GitException, GitService
+from continuity.services.github import GitHubService, GitHubException
+from continuity.services.pt import PivotalTrackerService
+from continuity.services.utils import cached_property
 from getpass import getpass
 from os import chmod, rename
 from os.path import exists
@@ -55,7 +57,7 @@ class GitCommand(BaseCommand):
 
         try:
             self.execute()
-        except (ConnectionError, GitException):
+        except (ConnectionError, ServiceException):
             puts("fatal: unable to access remote.")
             self.exit()
         except (KeyboardInterrupt, EOFError):
@@ -114,7 +116,7 @@ class GitCommand(BaseCommand):
         """Git accessor.
         """
         try:
-            ret_val = Git()
+            ret_val = GitService()
         except GitException:
             puts_err("fatal: Not a git repository.")
             exit(128)
@@ -151,7 +153,7 @@ class GitHubCommand(GitCommand):
         """
         token = self.get_value("github", "oauth-token")
 
-        return GitHub(self.git, token)
+        return GitHubService(self.git, token)
 
     @cached_property
     def issue(self):
@@ -194,7 +196,7 @@ class CommitCommand(BaseCommand):
         """Call this commit command.
         """
         try:
-            git = Git()
+            git = GitService()
 
             if git.branch:
                 configuration = git.get_configuration("branch",
@@ -323,7 +325,7 @@ class InitCommand(GitCommand):
         self.git.set_configuration("alias", **self.aliases)
 
         if self.pivotal:
-            github = GitHub(self.git, self.github["oauth-token"])
+            github = GitHubService(self.git, self.github["oauth-token"])
             hooks = github.get_hooks()
             token = hooks.get("pivotaltracker", {}).get("config", {}).\
                 get("token")
@@ -420,7 +422,7 @@ class InitCommand(GitCommand):
             password = getpass("GitHub password: ")
             name = "continuity:{0}".format(self.git.repo.working_dir)
             url = "https://github.com/jzempel/continuity"
-            token = GitHub.create_token(user, password, name, url)
+            token = GitHubService.create_token(user, password, name, url)
 
             if not token:
                 exit("Invalid GitHub credentials.")
@@ -434,20 +436,20 @@ class InitCommand(GitCommand):
         token = configuration.get("api-token")
         project_id = configuration.get("project-id")
         email = configuration.get("email")
-        owner = configuration.get("owner")
+        owner_id = configuration.get("owner-id")
 
         if token:
             token = prompt("Pivotal Tracker API token", token)
         else:
             email = prompt("Pivotal Tracker email", email)
             password = getpass("Pivotal Tracker password: ")
-            token = PivotalTracker.get_token(email, password)
+            token = PivotalTrackerService.get_token(email, password)
 
             if not token:
                 exit("Invalid Pivotal Tracker credentials.")
 
-        pt = PivotalTracker(token)
-        projects = pt.get_projects()
+        pt = PivotalTrackerService(token)
+        projects = pt.projects
 
         if projects:
             if not project_id:
@@ -467,7 +469,7 @@ class InitCommand(GitCommand):
 
                 for member in project.members:
                     if member.email == email:
-                        owner = member.name
+                        owner_id = member.id
                         break
                 else:
                     exit("Invalid project member email.")
@@ -480,7 +482,7 @@ class InitCommand(GitCommand):
             "api-token": token,
             "project-id": project_id,
             "email": email,
-            "owner": owner,
+            "owner-id": owner_id,
         }
 
 
@@ -625,7 +627,7 @@ def get_commands(tracker=None):
     }
 
     try:
-        git = Git()
+        git = GitService()
 
         if not tracker:
             continuity = git.get_configuration("continuity")

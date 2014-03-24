@@ -12,10 +12,10 @@
 from .commons import (FinishCommand as BaseFinishCommand, GitCommand,
         ReviewCommand as BaseReviewCommand, StartCommand as BaseStartCommand,
         TasksCommand as BaseTasksCommand)
-from .utils import cached_property, prompt
+from .utils import less, prompt
 from clint.textui import colored, puts
-from continuity.pt import PivotalTracker, Story
-from pydoc import pipepager
+from continuity.services.pt import PivotalTrackerService, Story
+from continuity.services.utils import cached_property
 from StringIO import StringIO
 from sys import exit
 
@@ -23,6 +23,20 @@ from sys import exit
 class PivotalTrackerCommand(GitCommand):
     """Base Pivotal Tracker command.
     """
+
+    @cached_property
+    def owner(self):
+        """Owner accessor.
+        """
+        ret_val = None
+        owner_id = int(self.get_value("pivotal", "owner-id"))
+
+        for member in self.project.members:
+            if owner_id == member.id:
+                ret_val = member
+                break
+
+        return ret_val
 
     @cached_property
     def project(self):
@@ -38,7 +52,7 @@ class PivotalTrackerCommand(GitCommand):
         """
         token = self.get_value("pivotal", "api-token")
 
-        return PivotalTracker(token)
+        return PivotalTrackerService(token)
 
     @cached_property
     def story(self):
@@ -80,14 +94,13 @@ class BacklogCommand(PivotalTrackerCommand):
     def execute(self):
         """Execute this backlog command.
         """
-        owner = self.get_value("pivotal", "owner")
         stories = self.pt.get_backlog(self.project)
         output = StringIO()
 
         for story in stories:
             if story.state in [Story.STATE_UNSCHEDULED,
                     Story.STATE_UNSTARTED] and (self.namespace.mywork is False
-                            or story.owner == owner):
+                            or self.owner in story.owners):
                 id = colored.yellow(str(story.id))
 
                 if story.estimate is None:
@@ -100,17 +113,19 @@ class BacklogCommand(PivotalTrackerCommand):
 
                 name = story.name
 
-                if story.owner:
+                if story.owners:
+                    initials = []
+
                     for member in self.project.members:
-                        if member.name == story.owner:
-                            name = "{0} ({1})".format(story.name,
-                                    member.initials)
-                            break
+                        if member in story.owners:
+                            initials.append(member.initials)
+
+                    name = "{0} ({1})".format(story.name, ', '.join(initials))
 
                 message = "{0} {1}: {2}\n".format(id, type, name)
                 output.write(message)
 
-        pipepager(output.getvalue(), cmd="less -FRSX")
+        less(output)
 
 
 class FinishCommand(BaseFinishCommand, PivotalTrackerCommand):
@@ -225,22 +240,21 @@ class StartCommand(BaseStartCommand, PivotalTrackerCommand):
         """Execute this start command.
         """
         if self.story:
-            puts("Story: {0}".format(self.story.name))
-            owner = self.get_value("pivotal", "owner")
+            puts("{0}: {1}".format(self.story.type.title(), self.story.name))
 
-            if self.story.owner is None:
+            if not self.story.owners:
                 self.story = self.pt.set_story(self.project, self.story,
-                        self.story.state, owner)
+                        self.story.state, self.owner)
 
             # Verify that owner got the story.
-            if self.story.owner == owner:
+            if self.owner in self.story.owners:
                 branch = super(StartCommand, self).execute()
                 self.git.set_configuration("branch", branch,
                         story=self.story.id)
                 self.pt.set_story(self.project, self.story,
                         Story.STATE_STARTED)
             else:
-                exit("Unable to update story owner.")
+                exit("Unable to update story owners.")
         else:
             if self.namespace.id and self.namespace.exclusive:
                 exit("No estimated story #{0} found assigned to you.".format(
@@ -265,21 +279,20 @@ class StartCommand(BaseStartCommand, PivotalTrackerCommand):
         """
         story_id = self.namespace.id
         exclusive = self.namespace.exclusive
-        owner = self.get_value("pivotal", "owner")
 
         if story_id and exclusive:
             puts("Retrieving story #{0} from Pivotal Tracker for {1}...".
-                format(story_id, owner))
+                format(story_id, self.owner))
             filter = "id:{0} owner:{1} state:unstarted,rejected".format(
-                story_id, owner)
+                story_id, self.owner)
         elif story_id:
             puts("Retrieving story #{0} from Pivotal Tracker...".format(
                 story_id))
             filter = "id:{0} state:unstarted,rejected".format(story_id)
         elif exclusive:
             puts("Retrieving next story from Pivotal Tracker for {0}...".
-                format(owner))
-            filter = "owner:{0} state:unstarted,rejected".format(owner)
+                format(self.owner))
+            filter = "owner:{0} state:unstarted,rejected".format(self.owner)
         else:
             filter = None
 
@@ -288,11 +301,12 @@ class StartCommand(BaseStartCommand, PivotalTrackerCommand):
         else:
             puts("Retrieving next available story from Pivotal Tracker...")
             stories = self.pt.get_backlog(self.project)
+            types = (Story.TYPE_FEATURE, Story.TYPE_BUG, Story.TYPE_CHORE)
+            states = (Story.STATE_UNSTARTED, Story.STATE_REJECTED)
 
             for story in stories:
-                if story.type in (Story.TYPE_FEATURE, Story.TYPE_BUG,
-                        Story.TYPE_CHORE) and (story.owner is None or
-                        story.owner == owner):
+                if story.type in types and story.state in states and \
+                        (not story.owners or self.owner in story.owners):
                     ret_val = story
                     break
             else:

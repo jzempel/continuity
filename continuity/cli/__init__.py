@@ -13,7 +13,7 @@ from .commons import get_commands
 from argparse import (ArgumentParser as BaseArgumentParser,
         HelpFormatter as BaseHelpFormatter,
         Namespace as BaseNamespace, PARSER, SUPPRESS)
-from continuity.git import Git, GitException
+from continuity.services.git import GitException, GitService
 from sys import argv
 import continuity
 
@@ -86,7 +86,7 @@ class Namespace(BaseNamespace):
 
         if ret_val is False:
             try:
-                git = Git()
+                git = GitService()
                 configuration = git.get_configuration("continuity")
                 ret_val = configuration.get("exclusive", False)
             except GitException:
