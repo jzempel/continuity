@@ -9,6 +9,7 @@ Version 0.7.5
 * Refactored services.
 * Improved Pivotal Tracker no-arg 'story' selection.
 * Corrected Pivotal Tracker 'finish' chore.
+* Updated 'init' to handle pre-existing GitHub OAuth token.
 
 Version 0.7.4
 ~~~~~~~~~~~~~

@@ -12,7 +12,9 @@
 from __future__ import division
 from .commons import DataObject, IDObject, RemoteService, ServiceException
 from .utils import datetime_property
-from requests import RequestException
+from json import dumps
+from requests import get, post, RequestException
+from urlparse import urljoin
 import re
 
 
@@ -378,9 +380,11 @@ class GitHubService(RemoteService):
     PATTERN_REPOSITORY = re.compile(expression, re.U)
     expression = r"^([-*+]|\d+\.)\s+\[(?P<checked>[ x])\]\s+(?P<description>\S.*)$"  # NOQA
     PATTERN_TASK = re.compile(expression, re.M | re.U)
+    URI = "https://api.github.com"
+    VERSION = "application/vnd.github.v3+json"
 
     def __init__(self, git, token):
-        super(GitHubService, self).__init__("https://api.github.com")
+        super(GitHubService, self).__init__(GitHubService.URI)
 
         if git.remote and "github.com" in git.remote.url:
             self.git = git
@@ -412,7 +416,7 @@ class GitHubService(RemoteService):
         :param kwargs: Request keyword-arguments.
         """
         headers = kwargs.get("headers", {})
-        headers["Accept"] = "application/vnd.github.v3+json"
+        headers["Accept"] = GitHubService.VERSION
         kwargs["headers"] = headers
 
         if "params" in kwargs:
@@ -487,7 +491,8 @@ class GitHubService(RemoteService):
 
         return PullRequest(pull_request)
 
-    def create_token(self, user, password, name, url=None, scopes=["repo"]):
+    @staticmethod
+    def create_token(user, password, name, url=None, scopes=["repo"]):
         """Create an OAuth token for the given user.
 
         :param user: The GitHub user to create a token for.
@@ -496,19 +501,29 @@ class GitHubService(RemoteService):
         :param url: Default `None`. A URL associated with the token.
         :param scopes: Default `['repo']`. A list of scopes this token is for.
         """
-        data = {
+        ret_val = None
+        auth = (user, password)
+        data = dumps({
             "scopes": scopes,
             "note": name,
             "note_url": url
-        }
-        auth = (user, password)
+        })
+        headers = {"Accept": GitHubService.VERSION}
+        url = urljoin(GitHubService.URI, "authorizations")
+        response = post(url, auth=auth, data=data, headers=headers,
+                verify=False)
 
-        try:
-            response = self._request("post", "authorizations", data=data,
-                    auth=auth)
-            ret_val = response["token"]
-        except GitHubException:
-            ret_val = None
+        if response.status_code == 422:  # already exists.
+            response = get(url, auth=auth, headers=headers)
+            authorizations = response.json()
+
+            for authorization in authorizations:
+                if authorization.get("note") == name:
+                    ret_val = authorization["token"]
+                    break
+        else:
+            authorization = response.json()
+            ret_val = authorization.get("token")
 
         return ret_val
 

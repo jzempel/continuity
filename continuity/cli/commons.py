@@ -386,13 +386,13 @@ class InitCommand(GitCommand):
         branch = configuration.get("integration-branch", self.branch.name)
         branch = prompt("Integration branch", branch)
         tracker = configuration.get("tracker")
-        tracker = prompt("Configure for (P)ivotal Tracker or (G)itHub Issues?",
-                tracker, characters="PG")
+        tracker = prompt("Configure for (G)itHub Issues or (P)ivotal Tracker?",
+                tracker, characters="GP")
 
-        if tracker == 'P':
-            tracker = "pivotal"
-        elif tracker == 'G':
+        if tracker == 'G':
             tracker = "github"
+        elif tracker == 'P':
+            tracker = "pivotal"
 
         exclusive = configuration.get("exclusive", False)
 
