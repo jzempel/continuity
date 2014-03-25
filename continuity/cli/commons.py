@@ -292,9 +292,17 @@ class FinishCommand(GitCommand):
 
 class InitCommand(GitCommand):
     """Initialize a git repository for use with continuity.
+
+    :param parser: Command-line argument parser.
+    :param namespace: Command-line argument namespace.
     """
 
     name = "init"
+
+    def __init__(self, parser, namespace):
+        parser.add_argument("-n", "--new", action="store_true",
+                help="reinitialize from scratch")
+        super(InitCommand, self).__init__(parser, namespace)
 
     def execute(self):
         """Execute this init command.
@@ -382,7 +390,11 @@ class InitCommand(GitCommand):
     def initialize_continuity(self):
         """Initialize continuity data.
         """
-        configuration = self.git.get_configuration("continuity")
+        if self.namespace.new:
+            configuration = {}
+        else:
+            configuration = self.git.get_configuration("continuity")
+
         branch = configuration.get("integration-branch", self.branch.name)
         branch = prompt("Integration branch", branch)
         tracker = configuration.get("tracker")
@@ -415,7 +427,7 @@ class InitCommand(GitCommand):
         configuration = self.git.get_configuration("github")
         token = configuration.get("oauth-token")
 
-        if token:
+        if token and not self.namespace.new:
             token = prompt("GitHub OAuth token", token)
         else:
             user = prompt("GitHub user", configuration.get("user"))
@@ -432,7 +444,11 @@ class InitCommand(GitCommand):
     def initialize_pivotal(self):
         """Initialize pivotal data.
         """
-        configuration = self.git.get_configuration("pivotal")
+        if self.namespace.new:
+            configuration = {}
+        else:
+            configuration = self.git.get_configuration("pivotal")
+
         token = configuration.get("api-token")
         project_id = configuration.get("project-id")
         email = configuration.get("email")

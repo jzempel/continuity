@@ -10,6 +10,7 @@ Version 0.7.5
 * Improved Pivotal Tracker no-arg 'story' selection.
 * Corrected Pivotal Tracker 'finish' chore.
 * Updated 'init' to handle pre-existing GitHub OAuth token.
+* Added 'init --new' command argument.
 
 Version 0.7.4
 ~~~~~~~~~~~~~
