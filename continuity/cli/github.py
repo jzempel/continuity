@@ -215,7 +215,7 @@ class StartCommand(BaseStartCommand, GitHubCommand):
         available = lambda issue: issue and \
             issue.state == Issue.STATE_OPEN and \
             not("started" in issue.labels or "finished" in issue.labels) and \
-            issue.pull_request.url is None
+            issue.pull_request is None
         number = self.namespace.number
         exclusive = self.namespace.exclusive
         user = self.github.get_user()
