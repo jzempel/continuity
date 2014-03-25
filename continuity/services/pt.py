@@ -19,11 +19,15 @@ class Comment(IDObject):
     """Pivotal Tracker comment object.
     """
 
+    FIELDS = ":default,person"
+
     @property
     def author(self):
         """Comment author accessor.
         """
-        return self.data.get("author")
+        member = self.data.get("person")
+
+        return Member(member) if member else None
 
     @datetime_property
     def created(self):
@@ -123,19 +127,6 @@ class Story(IDObject):
     TYPE_CHORE = "chore"
     TYPE_FEATURE = "feature"
     TYPE_RELEASE = "release"
-
-    @cached_property
-    def comments(self):
-        """Story comments accessor.
-        """
-        ret_val = []
-        comments = self.child("notes")
-
-        for comment in comments.children("note"):
-            comment = Comment(comment)
-            ret_val.append(comment)
-
-        return ret_val
 
     @datetime_property
     def created(self):
@@ -341,6 +332,23 @@ class PivotalTrackerService(RemoteService):
         for iteration in iterations:
             iteration = Iteration(iteration)
             ret_val.extend(iteration.stories)
+
+        return ret_val
+
+    def get_comments(self, project, story):
+        """Get the comments for the given story.
+
+        :param project: The project to use.
+        :param story: The story to use.
+        """
+        ret_val = []
+        resource = "projects/{0:d}/stories/{1:d}/comments".format(project.id,
+                story.id)
+        params = {"fields": Comment.FIELDS}
+        comments = self._request("get", resource, params=params)
+
+        for comment in comments:
+            ret_val.append(Comment(comment))
 
         return ret_val
 

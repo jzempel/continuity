@@ -8,6 +8,7 @@ Version 0.7.5
 * Updated to Pivotal Tracker REST API v5.
 * Refactored services.
 * Improved Pivotal Tracker no-arg 'story' selection.
+* Corrected Pivotal Tracker 'finish' chore.
 
 Version 0.7.4
 ~~~~~~~~~~~~~
