@@ -24,6 +24,8 @@ install_requires = [
 
 if "develop" in argv:
     install_requires.append("Sphinx-PyPI-upload")
+elif "test" in argv:
+    install_requires.append("mock")
 
 setup(
     name=continuity.__name__,
@@ -41,5 +43,6 @@ setup(
         "console_scripts": [
             "continuity = continuity.cli:main"
         ]
-    }
+    },
+    test_suite="continuity.tests"
 )

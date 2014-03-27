@@ -12,6 +12,7 @@
 from clint.textui import puts
 from curses.ascii import ctrl, CR, EOT, ETX, isctrl, LF
 from getch.getch import getch
+from getpass import getpass
 from pydoc import pipepager
 from StringIO import StringIO
 
@@ -51,15 +52,16 @@ def less(text):
     pipepager(text, cmd="less -FRSX")
 
 
-def prompt(message, default=None, characters=None):
+def prompt(message, default=None, characters=None, echo=True):
     """Prompt for input.
 
     :param message: The prompt message.
     :param default: Default `None`. The default input value.
     :param characters: Default `None`. Case-insensitive constraint for single-
         character input.
+    :param echo: Default `True`. Determine if input is echoed.
     """
-    if isinstance(default, basestring):
+    if default and isinstance(default, basestring):
         message = "{0} [{1}]".format(message, default)
 
     if characters:
@@ -85,9 +87,14 @@ def prompt(message, default=None, characters=None):
             elif isctrl(ret_val) and ctrl(ret_val) in (chr(ETX), chr(EOT)):
                 raise KeyboardInterrupt
         else:
-            ret_val = raw_input(message).strip() or default
+            if echo:
+                get_input = raw_input
+            else:
+                get_input = getpass
 
-            if ret_val:
+            ret_val = get_input(message).strip() or default
+
+            if ret_val is not None:
                 break
 
     return ret_val

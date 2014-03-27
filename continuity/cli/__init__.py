@@ -95,8 +95,10 @@ class Namespace(BaseNamespace):
         return ret_val
 
 
-def main():
+def main(*args):
     """Main entry point.
+
+    :param *args: Optional command-argument list.
     """
     parser = ArgumentParser(prog=continuity.__name__,
             formatter_class=HelpFormatter)
@@ -126,6 +128,6 @@ def main():
     version = "%(prog)s version {0}".format(continuity.__version__)
     parser.add_argument("--version", action="version", help=SUPPRESS,
             version=version)
-    arguments = argv[1:] or ["--help"]
+    arguments = args or argv[1:] or ["--help"]
     parser.parse_args(arguments, namespace=namespace)
     namespace.command()

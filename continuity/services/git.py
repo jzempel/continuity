@@ -41,7 +41,7 @@ class GitService(object):
         self.git = environ.get("GIT_PYTHON_GIT_EXECUTABLE", "git")
 
         try:
-            self.repo = Repo(path)
+            self.repo = Repo(path or environ.get("GIT_PYTHON_GIT_PATH"))
         except (InvalidGitRepositoryError, NoSuchPathError):
             raise GitException("Invalid path"), None, exc_info()[2]
 
@@ -191,6 +191,26 @@ class GitService(object):
             ret_val = None
 
         return ret_val
+
+    def remove_configuration(self, section, subsection=None, *options):
+        """Remove the git configuration data.
+
+        :param section: The git configuration section to remove from.
+        :param subsection: Default `None`. Optional subsection.
+        :param *options: A list of options to remove. If empty, then remove
+            the entire section.
+        """
+        writer = self.repo.config_writer()
+
+        if subsection:
+            section = '{0} "{1}"'.format(section, subsection)
+
+        if writer.has_section(section):
+            if options:
+                for option in options:
+                    writer.remove_option(section, option)
+            else:
+                writer.remove_section(section)
 
     def set_configuration(self, section, subsection=None, **kwargs):
         """Set the git configuration data for the given section.

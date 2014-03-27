@@ -3,5 +3,6 @@
 *.py[co]
 pyinstaller*
 build
+continuity/tests.cfg
 dist
 docs/_build

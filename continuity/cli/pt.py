@@ -170,7 +170,7 @@ class ReviewCommand(BaseReviewCommand, PivotalTrackerCommand):
         :param branch: The base branch the pull request is for.
         """
         title = prompt("Pull request title", self.git.branch.name)
-        description = raw_input("Pull request description (optional): ")
+        description = prompt("Pull request description (optional)", '')
 
         if description:
             self.description = "{0}\n\n{1}".format(self.story.url, description)
