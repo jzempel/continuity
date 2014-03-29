@@ -14,7 +14,8 @@ from .commons import ServiceException
 from ConfigParser import NoSectionError
 from git.exc import GitCommandError, InvalidGitRepositoryError, NoSuchPathError
 from git.repo.base import Repo
-from os import environ
+from os import environ, utime
+from os.path import basename, exists, join
 from sys import exc_info
 
 
@@ -35,13 +36,38 @@ class GitService(object):
 
     :param path: Default `None`. The path to the git repository. Defaults to
         the current directory.
+    :param origin: Default `None`. The remote origin URL.
     """
 
-    def __init__(self, path=None):
+    KEY_GIT_PATH = "CONTINUITY_GIT_PATH"
+
+    def __init__(self, path=None, origin=None):
         self.git = environ.get("GIT_PYTHON_GIT_EXECUTABLE", "git")
+        path = path or environ.get(GitService.KEY_GIT_PATH)
+        mkdir = path is not None and not exists(path)
 
         try:
-            self.repo = Repo(path or environ.get("GIT_PYTHON_GIT_PATH"))
+            self.repo = Repo.init(path, mkdir=mkdir)
+
+            if mkdir:
+                name = join(path, ".gitignore")
+
+                with file(name, 'a'):
+                    utime(name, None)
+
+                self.execute("add", basename(name))
+                self.execute("commit", "-m", "Initial commit")
+
+            if origin:
+                try:
+                    self.repo.create_remote("origin", origin)
+                except GitCommandError:
+                    self.execute("remote", "set-url",
+                            self.repo.remotes.origin.name, origin)
+
+                if mkdir:
+                    self.execute("push", "-u", self.repo.remotes.origin.name,
+                            self.branch.name)
         except (InvalidGitRepositoryError, NoSuchPathError):
             raise GitException("Invalid path"), None, exc_info()[2]
 
@@ -64,10 +90,8 @@ class GitService(object):
         :param name: The name of the branch to create.
         :param push: Default `True`. Determine whether to push to remote.
         """
-        command = [self.git, "checkout", "-b", str(name)]
-
         try:
-            ret_val = self.repo.git.execute(command)
+            ret_val = self.execute("checkout", "-b", str(name))
         except GitCommandError:
             ret_val = self.get_branch(name)
 
@@ -81,10 +105,8 @@ class GitService(object):
 
         :param name: The name of the branch to delete.
         """
-        command = [self.git, "branch", "-d", str(name)]
-
         try:
-            ret_val = self.repo.git.execute(command)
+            ret_val = self.execute("branch", "-d", str(name))
         except GitCommandError, error:
             exception = GitException(error.stderror, error.status)
 
@@ -92,15 +114,22 @@ class GitService(object):
 
         return ret_val
 
+    def execute(self, *args):
+        """Execute the given git command.
+
+        :param *args: Command argument list.
+        """
+        command = [self.git] + list(args)
+
+        return self.repo.git.execute(command)
+
     def get_branch(self, name):
         """Get the given branch name.
 
         :param name: The name of the branch to checkout.
         """
-        command = [self.git, "checkout", str(name)]
-
         try:
-            ret_val = self.repo.git.execute(command)
+            ret_val = self.execute("checkout", str(name))
         except GitCommandError:
             raise GitException("Invalid branch"), None, exc_info()[2]
 
@@ -140,7 +169,7 @@ class GitService(object):
         :param arguments: Default `None`. List of arguments to pass to
             git-merge.
         """
-        command = [self.git, "merge", name]
+        command = ["merge", name]
 
         if arguments:
             command.extend(arguments)
@@ -151,7 +180,7 @@ class GitService(object):
             command.extend(["--no-ff", "-m", message])
 
         try:
-            ret_val = self.repo.git.execute(command)
+            ret_val = self.execute(*command)
         except GitCommandError, error:
             exception = GitException(error.stderr, error.status)
 
@@ -168,10 +197,9 @@ class GitService(object):
             self.get_branch(name)
 
         remote = self.repo.remotes.origin
-        command = [self.git, "push", remote.name, self.branch.name]
 
         try:
-            ret_val = self.repo.git.execute(command)
+            ret_val = self.execute("push", remote.name, self.branch.name)
         except GitCommandError, error:
             exception = GitException(error.stderr, error.status)
 
@@ -183,11 +211,14 @@ class GitService(object):
     def remote(self):
         """Remote accessor.
         """
-        try:
-            remote = self.repo.remotes.origin
-            remote_reference = remote.refs[self.branch.name]
-            ret_val = self.repo.remotes[remote_reference.remote_name]
-        except IndexError:
+        if self.repo.remotes:
+            try:
+                remote = self.repo.remotes.origin
+                remote_reference = remote.refs[self.branch.name]
+                ret_val = self.repo.remotes[remote_reference.remote_name]
+            except (AssertionError, IndexError):
+                ret_val = None
+        else:
             ret_val = None
 
         return ret_val

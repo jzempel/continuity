@@ -9,20 +9,58 @@
     :license: BSD, see LICENSE for more details.
 """
 
-from ConfigParser import SafeConfigParser
+from ConfigParser import SafeConfigParser, NoSectionError
 from continuity.cli import main
 from continuity.cli.commons import MESSAGES
 from continuity.services.git import GitService
+from continuity.services.github import GitHubService
+from continuity.services.utils import cached_property
+from mock import DEFAULT, patch
 from shlex import split
 from unittest import TestCase
 import os
+import re
 
 
-PARSER = SafeConfigParser()
+class ConfigParser(SafeConfigParser):
+    """Custom configuration parser that handles option list values.
+    """
+
+    def get(self, section, option, raw=False, vars=None, index=-1):
+        """Get a configuration value.
+
+        :param section: The section to get a value from.
+        :param option: The option value to get.
+        :param raw: Default ``False``. Determine if % interpolations are
+            expanded.
+        :param vars: A preferred dictionary of option-values.
+        :param index: Default ``-1``. The index of the item to get from a list
+            of values. By default, the option value or list (if multiple
+            values are configured) is returned.
+        """
+        ret_val = SafeConfigParser.get(self, section, option, raw, vars)
+
+        if vars is None or option not in vars:
+            lines = ret_val.splitlines()
+            ret_val = filter(None, (line.strip() for line in lines))
+
+            if index >= 0:
+                ret_val = ret_val[index]
+            elif len(ret_val) == 1:
+                ret_val = ret_val[0]
+
+        return ret_val
+
+
+PARSER = ConfigParser()
 file_path = os.path.abspath(__file__)
 directory_path = os.path.dirname(file_path)
-file_name = os.path.join(directory_path, os.pardir, "tests.cfg")
-PARSER.read([file_name])
+file_names = [
+    os.path.join(directory_path, os.pardir, "tests.cfg"),
+    os.path.join(directory_path, os.pardir, ".tests.cfg"),
+    os.path.join(os.path.expanduser('~'), ".continuity.cfg")
+]
+PARSER.read(file_names)
 
 
 class ContinuityTestCase(TestCase):
@@ -74,38 +112,85 @@ class ContinuityTestCase(TestCase):
         """
         return self.assertTrue(x, message)
 
-    def command(self, line):
+    def command(self, line, **input):
         """Execute the given command line.
 
         :param line: The command line to execute.
+        :param **input: Message key-value input to the command prompts.
         """
+        def get_input(message, *args, **kwargs):
+            section = self.id()
+
+            for key, value in MESSAGES.iteritems():
+                if value == message:
+                    option = key
+                    break
+            else:
+                option = None
+
+            vars = self.configuration
+            vars.update(input)
+
+            return PARSER.get(section, option, vars=vars,
+                    index=self.command_count)
+
         arguments = split(line)
-        main(*arguments)
 
-    def get_input(self, message, *args, **kwargs):
-        """Get the test-configured input for the given message.
+        with patch.multiple("continuity.cli.commons", confirm=DEFAULT,
+                prompt=DEFAULT, puts=DEFAULT) as mocks:
+            mocks["confirm"].side_effect = get_input
+            mocks["prompt"].side_effect = get_input
+            main(*arguments)
 
-        :param message: The message to get input for.
-        :param *args: Argument list.
-        :param **kwargs: Keyword-arguments.
+        self.command_count += 1
+
+    @property
+    def configuration(self):
+        """Get the configuration for this test case.
         """
-        section = self.id()
+        try:
+            items = PARSER.items(self.id())
+            ret_val = dict(items)
+        except NoSectionError:
+            ret_val = {}
 
-        for key, value in MESSAGES.iteritems():
-            if value == message:
-                option = key
-                break
+        for section in ("continuity", "github", "pivotal"):
+            configuration = self.git.get_configuration(section)
+
+            for key, value in configuration.iteritems():
+                suffix = '_'.join(re.split(r"\.|\-", key))
+                key = "{0}_{1}".format(section, suffix)
+                ret_val[key] = value
+
+        return ret_val
+
+    @cached_property
+    def git(self):
+        """Get the git service instance for this test case.
+        """
+        path = PARSER.get("DEFAULT", GitService.KEY_GIT_PATH)
+        os.environ[GitService.KEY_GIT_PATH] = path
+
+        if os.path.exists(path):
+            origin = None
         else:
-            option = None
+            name = os.path.basename(path)
+            user = PARSER.get("DEFAULT", "github_user")
+            repository = GitHubService.create_repository(self.token, name,
+                    user)
+            origin = repository["clone_url"]
 
-        return PARSER.get(section, option)
+        return GitService(path, origin=origin)
+
+    @cached_property
+    def github(self):
+        """Get the github service instance for this test case.
+        """
+        return GitHubService(self.git, self.token)
 
     def setup(self):
         """Setup this test case.
         """
-        key = "GIT_PYTHON_GIT_PATH"
-        path = PARSER.get("environment", key)
-        self.git = GitService(path)
         options = [
             "backlog",
             "continuity",
@@ -122,9 +207,21 @@ class ContinuityTestCase(TestCase):
         self.git.remove_configuration("github", None, "oauth-token")
         options = ["api-token", "email", "owner-id", "project-id"]
         self.git.remove_configuration("pivotal", None, *options)
-        os.environ[key] = path
+        self.command_count = 0
 
     def setUp(self):
         """Delegate to `setup`.
         """
         self.setup()
+
+    @cached_property
+    def token(self):
+        """Get the GitHub token for this test case.
+        """
+        user = PARSER.get("DEFAULT", "github_user")
+        password = PARSER.get("DEFAULT", "github_password")
+        path = PARSER.get("DEFAULT", GitService.KEY_GIT_PATH)
+        name = "continuity:{0}".format(path)
+        url = "https://github.com/{0}/{1}".format(user, os.path.basename(path))
+
+        return GitHubService.create_token(user, password, name, url)

@@ -13,7 +13,7 @@ from __future__ import division
 from .commons import DataObject, IDObject, RemoteService, ServiceException
 from .utils import datetime_property
 from json import dumps
-from requests import get, post, RequestException
+from requests import codes, get, post, RequestException
 from urlparse import urljoin
 import re
 
@@ -376,7 +376,7 @@ class GitHubService(RemoteService):
     :param token: GitHub OAuth token.
     """
 
-    expression = r"^.+github\.com[/:](?P<repository>\w+/\w+)\.git$"
+    expression = r"^.+github\.com[/:](?P<repository>\w+/[\w\.]+)\.git$"
     PATTERN_REPOSITORY = re.compile(expression, re.U)
     expression = r"^([-*+]|\d+\.)\s+\[(?P<checked>[ x])\]\s+(?P<description>\S.*)$"  # NOQA
     PATTERN_TASK = re.compile(expression, re.M | re.U)
@@ -492,6 +492,33 @@ class GitHubService(RemoteService):
         return PullRequest(pull_request)
 
     @staticmethod
+    def create_repository(token, name, owner, entity="user"):
+        """Create a new repository.
+
+        :param name: The name of the repository to create.
+        :param owner: The name of the repository owner.
+        :param entity: Default ``'user'``. Specify ``'orgs/:org'`` if this is
+            for an organization.
+        """
+        data = dumps({"name": name})
+        headers = {
+            "Accept": GitHubService.VERSION,
+            "Authorization": "token {0}".format(token)
+        }
+        resource = "{0}/repos".format(entity)
+        url = urljoin(GitHubService.URI, resource)
+        response = post(url, data=data, headers=headers, verify=False)
+
+        if response.status_code == codes.unprocessable:  # already exists.
+            resource = "/repos/{0}/{1}".format(owner, name)
+            url = urljoin(GitHubService.URI, resource)
+            response = get(url, headers=headers, verify=False)
+        else:
+            response.raise_for_status()
+
+        return response.json()
+
+    @staticmethod
     def create_token(user, password, name, url=None, scopes=["repo"]):
         """Create an OAuth token for the given user.
 
@@ -513,7 +540,7 @@ class GitHubService(RemoteService):
         response = post(url, auth=auth, data=data, headers=headers,
                 verify=False)
 
-        if response.status_code == 422:  # already exists.
+        if response.status_code == codes.unprocessable:  # already exists.
             response = get(url, auth=auth, headers=headers)
             authorizations = response.json()
 
@@ -648,6 +675,17 @@ class GitHubService(RemoteService):
             ret_val = None
 
         return ret_val
+
+    def remove_hook(self, name):
+        """Remove a hook.
+
+        :param name: The name of the hook to remove.
+        """
+        hooks = self.get_hooks()
+
+        if name in hooks:
+            resource = "hooks/{0}".format(hooks[name].get("id"))
+            self._repo_request("delete", resource)
 
     def remove_label(self, issue, name):
         """Remove a label from an issue.

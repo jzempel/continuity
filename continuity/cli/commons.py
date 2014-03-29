@@ -24,18 +24,18 @@ from sys import exit
 
 
 MESSAGES = {
-    "continuity.integration-branch": "Integration branch",
-    "continuity.tracker": "Configure for (G)itHub Issues or (P)ivotal Tracker?",  # NOQA
-    "git.branch": "Enter branch name",
-    "github.exclusive": "Exclude issues not assigned to you?",
-    "github.oauth-token": "GitHub OAuth token",
-    "github.password": "GitHub password",
-    "github.user": "GitHub user",
-    "pivotal.api-token": "Pivotal Tracker API token",
-    "pivotal.email": "Pivotal Tracker email",
-    "pivotal.exclusive": "Exclude stories which you do not own?",
-    "pivotal.password": "Pivotal Tracker password",
-    "pivotal.project-id": "Pivotal Tracker project ID"
+    "continuity_integration_branch": "Integration branch",
+    "continuity_tracker": "Configure for (G)itHub Issues or (P)ivotal Tracker?",  # NOQA
+    "git_branch": "Enter branch name",
+    "github_exclusive": "Exclude issues not assigned to you?",
+    "github_oauth_token": "GitHub OAuth token",
+    "github_password": "GitHub password",
+    "github_user": "GitHub user",
+    "pivotal_api_token": "Pivotal Tracker API token",
+    "pivotal_email": "Pivotal Tracker email",
+    "pivotal_exclusive": "Exclude stories which you do not own?",
+    "pivotal_password": "Pivotal Tracker password",
+    "pivotal_project_id": "Pivotal Tracker project ID"
 }
 
 
@@ -411,9 +411,9 @@ class InitCommand(GitCommand):
             configuration = self.git.get_configuration("continuity")
 
         branch = configuration.get("integration-branch", self.branch.name)
-        branch = prompt(MESSAGES["continuity.integration-branch"], branch)
+        branch = prompt(MESSAGES["continuity_integration_branch"], branch)
         tracker = configuration.get("tracker")
-        tracker = prompt(MESSAGES["continuity.tracker"], tracker,
+        tracker = prompt(MESSAGES["continuity_tracker"], tracker,
                 characters="GP")
 
         if tracker == 'G':
@@ -424,10 +424,10 @@ class InitCommand(GitCommand):
         exclusive = configuration.get("exclusive", False)
 
         if tracker == "github":
-            exclusive = confirm(MESSAGES["github.exclusive"],
+            exclusive = confirm(MESSAGES["github_exclusive"],
                     default=exclusive)
         else:
-            exclusive = confirm(MESSAGES["pivotal.exclusive"],
+            exclusive = confirm(MESSAGES["pivotal_exclusive"],
                     default=exclusive)
 
         return {
@@ -443,10 +443,10 @@ class InitCommand(GitCommand):
         token = configuration.get("oauth-token")
 
         if token and not self.namespace.new:
-            token = prompt(MESSAGES["github.oauth-token"], token)
+            token = prompt(MESSAGES["github_oauth_token"], token)
         else:
-            user = prompt(MESSAGES["github.user"], configuration.get("user"))
-            password = prompt(MESSAGES["github.password"], echo=False)
+            user = prompt(MESSAGES["github_user"], configuration.get("user"))
+            password = prompt(MESSAGES["github_password"], echo=False)
             name = "continuity:{0}".format(self.git.repo.working_dir)
             url = "https://github.com/jzempel/continuity"
             token = GitHubService.create_token(user, password, name, url)
@@ -466,14 +466,15 @@ class InitCommand(GitCommand):
 
         token = configuration.get("api-token")
         project_id = configuration.get("project-id")
-        email = configuration.get("email")
+        email = configuration.get("email",
+                self.git.get_configuration("user").get("email"))
         owner_id = configuration.get("owner-id")
 
         if token:
-            token = prompt(MESSAGES["pivotal.api-token"], token)
+            token = prompt(MESSAGES["pivotal_api_token"], token)
         else:
-            email = prompt(MESSAGES["pivotal.email"], email)
-            password = prompt(MESSAGES["pivotal.password"], echo=False)
+            email = prompt(MESSAGES["pivotal_email"], email)
+            password = prompt(MESSAGES["pivotal_password"], echo=False)
             token = PivotalTrackerService.get_token(email, password)
 
             if not token:
@@ -489,14 +490,14 @@ class InitCommand(GitCommand):
                             project.name)
                     puts(message)
 
-            project_id = prompt(MESSAGES["pivotal.project-id"], project_id)
+            project_id = prompt(MESSAGES["pivotal_project_id"], project_id)
             project = pt.get_project(project_id)
 
             if project:
                 try:
                     password
                 except NameError:
-                    email = prompt(MESSAGES["pivotal.email"], email)
+                    email = prompt(MESSAGES["pivotal_email"], email)
 
                 for member in project.members:
                     if member.email == email:
@@ -582,7 +583,7 @@ class StartCommand(GitCommand):
         branch = self.get_value("continuity", "integration-branch")
 
         if self.namespace.force or branch == self.branch.name:
-            name = prompt(MESSAGES["git.branch"])
+            name = prompt(MESSAGES["git_branch"])
             ret_val = '-'.join(name.split())
 
             try:

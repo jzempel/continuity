@@ -10,7 +10,7 @@
 """
 
 from json import dumps
-from requests import request
+from requests import codes, request
 from urlparse import urljoin
 
 
@@ -74,7 +74,12 @@ class RemoteService(object):
         response = request(method, url, **kwargs)
         response.raise_for_status()
 
-        return response.json()
+        if response.status_code == codes.no_content:
+            ret_val = None
+        else:
+            ret_val = response.json()
+
+        return ret_val
 
 
 class ServiceException(Exception):
