@@ -16,6 +16,7 @@ from continuity.services.commons import ServiceException
 from continuity.services.git import GitException, GitService
 from continuity.services.github import (GitHubException,
         GitHubRequestException, GitHubService)
+from continuity.services.jira import JiraService
 from continuity.services.pt import PivotalTrackerService
 from continuity.services.utils import cached_property
 from os import chmod, rename
@@ -26,19 +27,23 @@ from sys import exit
 
 MESSAGES = {
     "continuity_integration_branch": "Integration branch",
-    "continuity_tracker": "Configure for (G)itHub Issues or (P)ivotal Tracker?",  # NOQA
+    "continuity_tracker": "Configure for (G)itHub Issues, (J)ira, or (P)ivotal Tracker?",  # NOQA
     "git_branch": "Enter branch name",
     "github_2fa_code": "GitHub two-factor authentication code",
     "github_exclusive": "Exclude issues not assigned to you?",
     "github_oauth_token": "GitHub OAuth token",
     "github_password": "GitHub password",
     "github_user": "GitHub user",
+    "jira_email": "Jira email",
+    "jira_host": "Jira host name",
+    "jira_password": "Jira password",
     "pivotal_api_token": "Pivotal Tracker API token",
     "pivotal_email": "Pivotal Tracker email",
     "pivotal_exclusive": "Exclude stories which you do not own?",
     "pivotal_password": "Pivotal Tracker password",
     "pivotal_project_id": "Pivotal Tracker project ID"
 }
+MESSAGES["jira_exclusive"] = MESSAGES["github_exclusive"]
 
 
 class BaseCommand(object):
@@ -320,6 +325,8 @@ class InitCommand(GitCommand):
         parser.add_argument("-n", "--new", action="store_true",
                 help="reinitialize from scratch")
         super(InitCommand, self).__init__(parser, namespace)
+        self.jira = {}
+        self.pivotal = {}
 
     def execute(self):
         """Execute this init command.
@@ -328,11 +335,12 @@ class InitCommand(GitCommand):
         puts()
         self.continuity = self.initialize_continuity()
 
-        if self.continuity["tracker"] == "pivotal":
+        if self.continuity["tracker"] == "jira":
+            puts()
+            self.jira = self.initialize_jira()
+        elif self.continuity["tracker"] == "pivotal":
             puts()
             self.pivotal = self.initialize_pivotal()
-        else:
-            self.pivotal = {}
 
         puts()
         self.github = self.initialize_github()
@@ -346,6 +354,7 @@ class InitCommand(GitCommand):
 
         self.git.set_configuration("continuity", **self.continuity)
         self.git.set_configuration("github", **self.github)
+        self.git.set_configuration("jira", **self.jira)
         self.git.set_configuration("pivotal", **self.pivotal)
         self.git.set_configuration("alias", **self.aliases)
 
@@ -385,6 +394,9 @@ class InitCommand(GitCommand):
         puts("Configured git for continuity:")
 
         with indent():
+            for key, value in self.jira.iteritems():
+                puts("jira.{0}={1}".format(key, value))
+
             for key, value in self.pivotal.iteritems():
                 puts("pivotal.{0}={1}".format(key, value))
 
@@ -416,21 +428,18 @@ class InitCommand(GitCommand):
         branch = prompt(MESSAGES["continuity_integration_branch"], branch)
         tracker = configuration.get("tracker")
         tracker = prompt(MESSAGES["continuity_tracker"], tracker,
-                characters="GP")
+                characters="GJP")
 
         if tracker == 'G':
             tracker = "github"
+        elif tracker == 'J':
+            tracker = "jira"
         elif tracker == 'P':
             tracker = "pivotal"
 
-        exclusive = configuration.get("exclusive", False)
-
-        if tracker == "github":
-            exclusive = confirm(MESSAGES["github_exclusive"],
-                    default=exclusive)
-        else:
-            exclusive = confirm(MESSAGES["pivotal_exclusive"],
-                    default=exclusive)
+        message = MESSAGES["{0}_exclusive".format(tracker)]
+        default = configuration.get("exclusive", False)
+        exclusive = confirm(message, default=default)
 
         return {
             "integration-branch": branch,
@@ -464,6 +473,36 @@ class InitCommand(GitCommand):
                 exit("Invalid GitHub credentials.")
 
         return {"oauth-token": token}
+
+    def initialize_jira(self):
+        """Initialize jira data.
+        """
+        if self.namespace.new:
+            configuration = {}
+        else:
+            configuration = self.git.get_configuration("jira")
+
+        host = prompt(MESSAGES["jira_host"], configuration.get("host"))
+        token = configuration.get("auth-token")
+        email = configuration.get("email",
+                self.git.get_configuration("user").get("email"))
+
+        if not token:
+            email = prompt(MESSAGES["jira_email"], email)
+            password = prompt(MESSAGES["jira_password"], echo=False)
+            token = JiraService.get_token(email, password)
+
+            if not token:
+                exit("Invalid Jira credentials.")
+
+        jira = JiraService(host, token)
+        jira.get_user()
+
+        return {
+            "auth-token": token,
+            "email": email,
+            "host": host
+        }
 
     def initialize_pivotal(self):
         """Initialize pivotal data.
