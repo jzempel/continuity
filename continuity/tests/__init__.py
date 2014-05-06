@@ -224,4 +224,4 @@ class ContinuityTestCase(TestCase):
         name = "continuity:{0}".format(path)
         url = "https://github.com/{0}/{1}".format(user, os.path.basename(path))
 
-        return GitHubService.create_token(user, password, name, url)
+        return GitHubService.create_token(user, password, name, url=url)

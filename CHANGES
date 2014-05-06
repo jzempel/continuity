@@ -5,6 +5,7 @@ Version 0.8
 ~~~~~~~~~~~
 
 * Added unit testing.
+* Support GitHub 2FA.
 
 Version 0.7.5
 ~~~~~~~~~~~~~

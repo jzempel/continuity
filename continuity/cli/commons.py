@@ -14,7 +14,8 @@ from argparse import REMAINDER, SUPPRESS
 from clint.textui import colored, indent, puts, puts_err
 from continuity.services.commons import ServiceException
 from continuity.services.git import GitException, GitService
-from continuity.services.github import GitHubService, GitHubException
+from continuity.services.github import (GitHubException,
+        GitHubRequestException, GitHubService)
 from continuity.services.pt import PivotalTrackerService
 from continuity.services.utils import cached_property
 from os import chmod, rename
@@ -27,6 +28,7 @@ MESSAGES = {
     "continuity_integration_branch": "Integration branch",
     "continuity_tracker": "Configure for (G)itHub Issues or (P)ivotal Tracker?",  # NOQA
     "git_branch": "Enter branch name",
+    "github_2fa_code": "GitHub two-factor authentication code",
     "github_exclusive": "Exclude issues not assigned to you?",
     "github_oauth_token": "GitHub OAuth token",
     "github_password": "GitHub password",
@@ -449,7 +451,14 @@ class InitCommand(GitCommand):
             password = prompt(MESSAGES["github_password"], echo=False)
             name = "continuity:{0}".format(self.git.repo.working_dir)
             url = "https://github.com/jzempel/continuity"
-            token = GitHubService.create_token(user, password, name, url)
+
+            try:
+                token = GitHubService.create_token(user, password, name,
+                        url=url)
+            except GitHubRequestException:
+                code = prompt(MESSAGES["github_2fa_code"])
+                token = GitHubService.create_token(user, password, name,
+                        code=code, url=url)
 
             if not token:
                 exit("Invalid GitHub credentials.")

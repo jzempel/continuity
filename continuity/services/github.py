@@ -519,12 +519,14 @@ class GitHubService(RemoteService):
         return response.json()
 
     @staticmethod
-    def create_token(user, password, name, url=None, scopes=["repo"]):
+    def create_token(user, password, name, code=None, url=None,
+            scopes=["repo"]):
         """Create an OAuth token for the given user.
 
         :param user: The GitHub user to create a token for.
         :param password: The user password.
         :param name: The name for the token.
+        :param code: Default `None`. Two-factor authentication code.
         :param url: Default `None`. A URL associated with the token.
         :param scopes: Default `['repo']`. A list of scopes this token is for.
         """
@@ -536,6 +538,10 @@ class GitHubService(RemoteService):
             "note_url": url
         })
         headers = {"Accept": GitHubService.VERSION}
+
+        if code:
+            headers["X-GitHub-OTP"] = code
+
         url = urljoin(GitHubService.URI, "authorizations")
         response = post(url, auth=auth, data=data, headers=headers,
                 verify=False)
@@ -548,6 +554,12 @@ class GitHubService(RemoteService):
                 if authorization.get("note") == name:
                     ret_val = authorization["token"]
                     break
+        elif response.status_code == codes.unauthorized and code is None and \
+                "required" in response.headers.get("X-GitHub-OTP", ''):
+            try:
+                response.raise_for_status()
+            except RequestException, e:
+                raise GitHubRequestException(e)
         else:
             authorization = response.json()
             ret_val = authorization.get("token")
