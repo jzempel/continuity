@@ -34,9 +34,9 @@ MESSAGES = {
     "github_oauth_token": "GitHub OAuth token",
     "github_password": "GitHub password",
     "github_user": "GitHub user",
-    "jira_email": "Jira email",
-    "jira_host": "Jira host name",
     "jira_password": "Jira password",
+    "jira_url": "Jira base url",
+    "jira_user": "Jira username",
     "pivotal_api_token": "Pivotal Tracker API token",
     "pivotal_email": "Pivotal Tracker email",
     "pivotal_exclusive": "Exclude stories which you do not own?",
@@ -482,26 +482,25 @@ class InitCommand(GitCommand):
         else:
             configuration = self.git.get_configuration("jira")
 
-        host = prompt(MESSAGES["jira_host"], configuration.get("host"))
+        url = prompt(MESSAGES["jira_url"], configuration.get("url"))
         token = configuration.get("auth-token")
-        email = configuration.get("email",
-                self.git.get_configuration("user").get("email"))
+        user = prompt(MESSAGES["jira_user"], configuration.get("user"))
 
         if not token:
-            email = prompt(MESSAGES["jira_email"], email)
             password = prompt(MESSAGES["jira_password"], echo=False)
-            token = JiraService.get_token(email, password)
+            token = JiraService.get_token(user, password)
 
-            if not token:
-                exit("Invalid Jira credentials.")
+        jira = JiraService(url, token)
 
-        jira = JiraService(host, token)
-        jira.get_user()
+        try:
+            jira.get_user()
+        except:
+            exit("Invalid Jira credentials.")
 
         return {
             "auth-token": token,
-            "email": email,
-            "host": host
+            "url": url,
+            "user": user
         }
 
     def initialize_pivotal(self):

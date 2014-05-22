@@ -12,6 +12,7 @@
 from .commons import RemoteService, ServiceException
 from requests import RequestException
 from requests.auth import _basic_auth_str
+from urlparse import urljoin
 
 
 class JiraException(ServiceException):
@@ -22,14 +23,14 @@ class JiraException(ServiceException):
 class JiraService(RemoteService):
     """Jira service.
 
-    :param host: The service host name.
+    :param base: The service base URL.
     :param token: The authentication token to use.
     """
 
-    URI = "https://{0}/rest/api/2/"
+    URI = "/rest/api/2/"
 
-    def __init__(self, host, token):
-        url = JiraService.URI.format(host)
+    def __init__(self, base, token):
+        url = urljoin(base, JiraService.URI)
         super(JiraService, self).__init__(url)
         self.token = token
 
@@ -56,7 +57,7 @@ class JiraService(RemoteService):
     def get_token(user, password):
         """Get an auth token for the given user.
 
-        :param user: The user to get a token for.
+        :param user: The user name to get a token for.
         :param password: The user password.
         """
         token = _basic_auth_str(user, password)
@@ -70,6 +71,4 @@ class JiraService(RemoteService):
             authenticated user.
         """
         resource = "user" if name else "myself"
-        user = self._request("get", resource)
-
-        print user
+        self._request("get", resource)
