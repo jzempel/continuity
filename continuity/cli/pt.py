@@ -104,12 +104,13 @@ class BacklogCommand(PivotalTrackerCommand):
                 id = colored.yellow(str(story.id))
 
                 if story.estimate is None:
-                    type = story.type.upper()
-                elif story.estimate >= 0:
+                    if story.type == Story.TYPE_FEATURE:
+                        type = "{0} (?)".format(story.type.upper())
+                    else:
+                        type = story.type.upper()
+                else:
                     type = "{0} ({1:d})".format(story.type.upper(),
                             story.estimate)
-                else:
-                    type = "{0} (?)".format(story.type.upper())
 
                 name = story.name
 

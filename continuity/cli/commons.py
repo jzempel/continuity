@@ -35,6 +35,7 @@ MESSAGES = {
     "github_password": "GitHub password",
     "github_user": "GitHub user",
     "jira_password": "Jira password",
+    "jira_project_key": "Jira project key",
     "jira_url": "Jira base url",
     "jira_user": "Jira username",
     "pivotal_api_token": "Pivotal Tracker API token",
@@ -484,9 +485,10 @@ class InitCommand(GitCommand):
 
         url = prompt(MESSAGES["jira_url"], configuration.get("url"))
         token = configuration.get("auth-token")
+        project_key = configuration.get("project-key")
         user = prompt(MESSAGES["jira_user"], configuration.get("user"))
 
-        if not token:
+        if not token or user != configuration.get("user"):
             password = prompt(MESSAGES["jira_password"], echo=False)
             token = JiraService.get_token(user, password)
 
@@ -497,8 +499,26 @@ class InitCommand(GitCommand):
         except:
             exit("Invalid Jira credentials.")
 
+        projects = jira.projects
+
+        if projects:
+            if not project_key:
+                for project in projects:
+                    message = "{0} - {1}".format(colored.yellow(project.key),
+                            project.name)
+                    puts(message)
+
+            project_key = prompt(MESSAGES["jira_project_key"], project_key)
+            project = jira.get_project(project_key)
+
+            if not project:
+                exit("Invalid project key.")
+        else:
+            exit("No Jira projects found.")
+
         return {
             "auth-token": token,
+            "project-key": project_key,
             "url": url,
             "user": user
         }
@@ -723,6 +743,17 @@ def get_commands(tracker=None):
                 ReviewCommand.name: ReviewCommand,
                 StartCommand.name: StartCommand,
                 TasksCommand.name: TasksCommand
+            })
+        elif tracker == "jira":
+            from .jira import (FinishCommand, IssueCommand, IssuesCommand,
+                    ReviewCommand, StartCommand)
+
+            ret_val.update({
+                FinishCommand.name: FinishCommand,
+                IssueCommand.name: IssueCommand,
+                IssuesCommand.name: IssuesCommand,
+                ReviewCommand.name: ReviewCommand,
+                StartCommand.name: StartCommand
             })
         else:
             from .pt import (BacklogCommand, FinishCommand, ReviewCommand,
