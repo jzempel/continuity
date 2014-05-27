@@ -12,8 +12,8 @@
 from .commons import (FinishCommand as BaseFinishCommand, GitCommand,
         ReviewCommand as BaseReviewCommand, StartCommand as BaseStartCommand)
 from .utils import less
-from clint.textui import colored
-from continuity.services.jira import JiraService
+from clint.textui import colored, puts
+from continuity.services.jira import Issue, JiraService
 from continuity.services.utils import cached_property
 from StringIO import StringIO
 
@@ -21,6 +21,22 @@ from StringIO import StringIO
 class JiraCommand(GitCommand):
     """Base Jira command.
     """
+
+    def get_issues(self, **parameters):
+        """Get a list of issues.
+
+        :param parameters: Query field-value parameters.
+        """
+        jql = "project = {0} AND \
+                statusCategory = {1} AND \
+                issueType in standardIssueTypes() \
+                ORDER BY created ASC".format(self.project.key,
+                        Issue.STATUS_NEW)
+
+        for field, value in parameters.iteritems():
+            jql = "{0} = {1} AND {2}".format(field, value, jql)
+
+        return self.jira.get_issues(jql)
 
     @cached_property
     def jira(self):
@@ -60,6 +76,14 @@ class JiraCommand(GitCommand):
 
         return self.jira.get_project(key)
 
+    @cached_property
+    def user(self):
+        """User accessor.
+        """
+        name = self.get_value("jira", "user")
+
+        return self.jira.get_user(name)
+
 
 class FinishCommand(BaseFinishCommand, JiraCommand):
     """Finish an issue branch.
@@ -90,15 +114,11 @@ class IssuesCommand(JiraCommand):
     def execute(self):
         """Execute this issues command.
         """
-        jql = "project = {0} AND \
-                statusCategory != Complete AND \
-                issueType in standardIssueTypes() \
-                ORDER BY created ASC".format(self.project.key)
-
         if self.namespace.myissues:
-            jql = "{0} {1}".format("assignee = currentUser() AND", jql)
+            issues = self.get_issues(assignee="currentUser()")
+        else:
+            issues = self.get_issues()
 
-        issues = self.jira.get_issues(jql)
         output = StringIO()
 
         for issue in issues:
@@ -122,4 +142,101 @@ class ReviewCommand(BaseReviewCommand, JiraCommand):
 
 class StartCommand(BaseStartCommand, JiraCommand):
     """Start a branch linked to a story.
+
+    :param parser: Command-line argument parser.
+    :param namespace: Command-line argument namespace.
     """
+
+    def __init__(self, parser, namespace):
+        parser.add_argument("key", help="start the specified issue",
+                nargs='?')
+        parser.add_argument("-m", "--myissues", action="store_true",
+                help="only start issues assigned to me")
+        super(StartCommand, self).__init__(parser, namespace)
+
+    def execute(self):
+        """Execute this start command.
+        """
+        if self.issue:
+            puts("Issue: {0}".format(self.issue))
+
+            if self.issue.assignee is None:
+                self.issue = self.jira.set_issue_assignee(self.issue,
+                        self.user)
+
+            # Verify that user got the issue.
+            if self.issue.assignee == self.user:
+                branch = super(StartCommand, self).execute()
+                self.git.set_configuration("branch", branch,
+                        issue=self.issue.key)
+                # TODO perform an issue transition.
+            else:
+                exit("Unable to update issue assignee.")
+        else:
+            if self.namespace.key and not self.namespace.key.startswith(
+                    self.project.key):
+                exit("No issue {0} found in project {1}.".format(
+                    self.namespace.key, self.project))
+            if self.namespace.key and self.namespace.exclusive:
+                exit("No available issue {0} found assigned to you.".format(
+                    self.namespace.key))
+            elif self.namespace.key:
+                exit("No available issue {0} found.".format(
+                    self.namespace.key))
+            elif self.namespace.exclusive:
+                exit("No available issues found assigned to you.")
+            else:
+                exit("No available issues found.")
+
+    def exit(self):
+        """Handle start command exit.
+        """
+        puts("Aborted issue branch.")
+        super(StartCommand, self).exit()
+
+    @cached_property
+    def issue(self):
+        """Target issue accessor.
+        """
+        ret_val = None
+
+        try:
+            id = int(self.namespace.key)
+            self.namespace.key = "{0}-{1}".format(self.project.key, id)
+        except:
+            pass
+
+        key = self.namespace.key
+        exclusive = self.namespace.exclusive
+
+        if key and exclusive:
+            puts("Retrieving issue {0} from Jira for {1}...".format(key,
+                self.user))
+            jql = "project = {0} AND \
+                    statusCategory = {1} AND \
+                    issue = {2} AND \
+                    assignee = {3}".format(
+                self.project.key, Issue.STATUS_NEW, key, self.user)
+            ret_val = self.jira.get_issue(jql)
+        elif key:
+            puts("Retrieving issue {0} from Jira...".format(key))
+            jql = "project = {0} AND \
+                    statusCategory = {1} AND \
+                    issue = {2}".format(
+                self.project.key, Issue.STATUS_NEW, key)
+            ret_val = self.jira.get_issue(jql)
+        elif exclusive:
+            puts("Retrieving next issue from Jira for {0}...".format(
+                self.user))
+            issues = self.get_issues(assignee=self.user)
+
+            if issues:
+                ret_val = issues[0]
+        else:
+            puts("Retrieving next available issue from Jira...")
+            issues = self.get_issues()
+
+            if issues:
+                ret_val = issues[0]
+
+        return ret_val

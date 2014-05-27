@@ -82,6 +82,7 @@ class Namespace(BaseNamespace):
         """Determine if continuity is operating in exclusive mode.
         """
         ret_val = getattr(self, "assignedtoyou", False) or \
+            getattr(self, "myissues", False) or \
             getattr(self, "mywork", False)
 
         if ret_val is False:

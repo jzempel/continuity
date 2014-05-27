@@ -20,6 +20,10 @@ class Issue(IDObject):
     """Jira issue object.
     """
 
+    STATUS_COMPLETE = "Complete"
+    STATUS_IN_PROGRESS = "In Progress"
+    STATUS_NEW = "New"
+
     def __str__(self):
         """Issue string representation.
         """
@@ -74,6 +78,13 @@ class Issue(IDObject):
         return Project(project) if project else None
 
     @property
+    def status(self):
+        """Issue status category accessor.
+        """
+        return self.fields.get("status", {}).get("statusCategory", {}).get(
+            "name")
+
+    @property
     def summary(self):
         """Issue summary accessor.
         """
@@ -117,6 +128,18 @@ class Project(IDObject):
 class User(DataObject):
     """Jira user object.
     """
+
+    def __cmp__(self, other):
+        """Compare user objects.
+
+        :param other: The object to compare to.
+        """
+        return cmp(hash(self), hash(other))
+
+    def __hash__(self):
+        """User object hash value.
+        """
+        return hash(self.name)
 
     def __str__(self):
         """Get a string representation of this User.
@@ -164,6 +187,10 @@ class JiraService(RemoteService):
         """
         headers = kwargs.get("headers", {})
         headers["Authorization"] = "Basic {0}".format(self.token)
+
+        if method.lower() in ("post", "put"):
+            headers["Content-Type"] = "application/json"
+
         kwargs["headers"] = headers
 
         try:
@@ -187,6 +214,23 @@ class JiraService(RemoteService):
 
         for issue in issues:
             ret_val.append(Issue(issue))
+
+        return ret_val
+
+    def get_issue(self, jql):
+        """Get an issue identified by the given JQL.
+
+        :param jql: Jira Query Language string.
+        """
+        try:
+            issues = self.get_issues(jql)
+
+            if len(issues) == 1:
+                ret_val = issues[0]
+            else:
+                ret_val = None
+        except JiraException:
+            ret_val = None
 
         return ret_val
 
@@ -221,8 +265,12 @@ class JiraService(RemoteService):
         :param name: Default `None`. Optional user name, otherwise get the
             authenticated user.
         """
-        resource = "user" if name else "myself"
-        self._request("get", resource)
+        if name:
+            user = self._request("get", "user", params={"username": name})
+        else:
+            user = self._request("get", "myself")
+
+        return User(user)
 
     @cached_property
     def projects(self):
@@ -235,3 +283,16 @@ class JiraService(RemoteService):
             ret_val.append(Project(project))
 
         return ret_val
+
+    def set_issue_assignee(self, issue, user):
+        """Set the assignee of the given issue.
+
+        :param issue: The issue to update.
+        :param user: The user to assign to the issue.
+        """
+        resource = "issue/{0}/assignee".format(issue.key)
+        data = {"name": user.name}
+        self._request("put", resource, data=data)
+        jql = "issue = {0}".format(issue.key)
+
+        return self.get_issue(jql)
