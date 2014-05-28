@@ -11,7 +11,7 @@
 
 from .commons import (FinishCommand as BaseFinishCommand, GitCommand,
         ReviewCommand as BaseReviewCommand, StartCommand as BaseStartCommand)
-from .utils import less
+from .utils import less, prompt
 from clint.textui import colored, puts
 from continuity.services.jira import Issue, JiraService
 from continuity.services.utils import cached_property
@@ -166,10 +166,35 @@ class StartCommand(BaseStartCommand, JiraCommand):
 
             # Verify that user got the issue.
             if self.issue.assignee == self.user:
+                transitions = self.jira.get_issue_transitions(self.issue,
+                        Issue.STATUS_IN_PROGRESS)
+
+                if transitions:
+                    if len(transitions) > 1:
+                        characters = ''
+                        transition_map = {}
+
+                        for index, transition in enumerate(transitions):
+                            key = str(index + 1)
+                            puts("{0}. {1}".format(colored.yellow(key),
+                                transition))
+                            characters = "{0}{1}".format(characters, key)
+                            transition_map[key] = transition
+
+                        index = prompt("Select transition:",
+                                characters=characters)
+                        transition = transition_map[index]
+                    else:
+                        transition = transitions[0]
+                else:
+                    transition = None
+
                 branch = super(StartCommand, self).execute()
                 self.git.set_configuration("branch", branch,
                         issue=self.issue.key)
-                # TODO perform an issue transition.
+
+                if transition:
+                    self.jira.set_issue_transition(self.issue, transition)
             else:
                 exit("Unable to update issue assignee.")
         else:

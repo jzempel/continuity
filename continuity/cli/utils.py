@@ -31,7 +31,7 @@ def confirm(message, default=False):
         options = "y/n"
 
     message = "{0} ({1})".format(message, options)
-    ret_val = prompt(message, default=default, characters="YN")
+    ret_val = prompt(message, default=default, characters="YN", echo=False)
 
     if ret_val == 'Y':
         ret_val = True
@@ -78,7 +78,10 @@ def prompt(message, default=None, characters=None, echo=True):
                 ret_val = default
                 break
             if ret_val in characters.lower() or ret_val in characters.upper():
-                puts()
+                if echo:
+                    puts(ret_val)
+                else:
+                    puts()
 
                 if ret_val not in characters:
                     ret_val = ret_val.swapcase()

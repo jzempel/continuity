@@ -108,7 +108,7 @@ class Project(IDObject):
     """
 
     def __str__(self):
-        """Project string representation.
+        """project string representation.
         """
         return "{0} ({1})".format(self.name, self.key)
 
@@ -123,6 +123,35 @@ class Project(IDObject):
         """Project name accessor.
         """
         return self.data.get("name")
+
+
+class Transition(IDObject):
+    """Jira transition object.
+    """
+
+    def __str__(self):
+        """Get a string representation of this transition.
+        """
+        return self.name
+
+    @property
+    def description(self):
+        """Transition description accessor.
+        """
+        return self.data.get("to", {}).get("description")
+
+    @property
+    def name(self):
+        """Transition name accessor.
+        """
+        return self.data.get("name")
+
+    @property
+    def status(self):
+        """Transition status category accessor.
+        """
+        return self.data.get("to", {}).get("statusCategory", {}).get(
+            "name")
 
 
 class User(DataObject):
@@ -142,7 +171,7 @@ class User(DataObject):
         return hash(self.name)
 
     def __str__(self):
-        """Get a string representation of this User.
+        """Get a string representation of this user.
         """
         return self.name
 
@@ -234,6 +263,25 @@ class JiraService(RemoteService):
 
         return ret_val
 
+    def get_issue_transitions(self, issue, status=None):
+        """Get issue transitions for the given issue.
+
+        :param key: The issue to get transitions for.
+        :param status: Default `None`. A status to filter by.
+        """
+        ret_val = []
+        resource = "issue/{0}/transitions".format(issue.key)
+        response = self._request("get", resource)
+        transitions = response.get("transitions")
+
+        for transition in transitions:
+            transition = Transition(transition)
+
+            if status is None or transition.status == status:
+                ret_val.append(transition)
+
+        return ret_val
+
     def get_project(self, key):
         """Get a project for the given key.
 
@@ -293,6 +341,19 @@ class JiraService(RemoteService):
         resource = "issue/{0}/assignee".format(issue.key)
         data = {"name": user.name}
         self._request("put", resource, data=data)
+        jql = "issue = {0}".format(issue.key)
+
+        return self.get_issue(jql)
+
+    def set_issue_transition(self, issue, transition):
+        """Set the transition for the given issue.
+
+        :param issue: The issue to update.
+        :param transition: The transition to assign to the issue.
+        """
+        resource = "issue/{0}/transitions".format(issue.key)
+        data = {"transition": transition.id}
+        self._request("post", resource, data=data)
         jql = "issue = {0}".format(issue.key)
 
         return self.get_issue(jql)

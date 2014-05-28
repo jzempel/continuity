@@ -429,7 +429,7 @@ class InitCommand(GitCommand):
         branch = prompt(MESSAGES["continuity_integration_branch"], branch)
         tracker = configuration.get("tracker")
         tracker = prompt(MESSAGES["continuity_tracker"], tracker,
-                characters="GJP")
+                characters="GJP", echo=False)
 
         if tracker == 'G':
             tracker = "github"
