@@ -18,6 +18,7 @@ install_requires = [
     "clint",
     "GitPython",
     "py-getch",
+    "python-dateutil < 2.0",
     "requests",
     "Sphinx"
 ]

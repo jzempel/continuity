@@ -56,8 +56,8 @@ class JiraCommand(GitCommand):
 
         if configuration:
             try:
-                id = configuration["issue"]
-                ret_val = self.jira.get_issue(id)
+                jql = "issue = {0}".format(configuration["issue"])
+                ret_val = self.jira.get_issue(jql)
             except KeyError:
                 ret_val = None
         else:
@@ -92,9 +92,40 @@ class FinishCommand(BaseFinishCommand, JiraCommand):
 
 class IssueCommand(JiraCommand):
     """Display issue branch information.
+
+    :param parser: Command-line argument parser.
+    :param namespace: Command-line argument namespace.
     """
 
     name = "issue"
+
+    def __init__(self, parser, namespace):
+        parser.add_argument("-c", "--comments", action="store_true",
+                help="include issue comments")
+        super(IssueCommand, self).__init__(parser, namespace)
+
+    def execute(self):
+        """Execute this issue command.
+        """
+        puts(self.issue.summary)
+
+        if self.issue.description:
+            puts()
+            puts(colored.cyan(self.issue.description))
+
+        puts()
+        puts(colored.white("Created by {0} on {1}".format(
+            self.issue.creator,
+            self.issue.created.strftime("%d %b %Y, %I:%M%p"))))
+        puts(colored.white(self.jira.get_issue_url(self.issue)))
+
+        if self.namespace.comments:
+            for comment in self.github.get_comments(self.issue):
+                puts()
+                puts(colored.yellow("{0} ({1})".format(
+                    comment.user.login, comment.created)))
+                puts()
+                puts(str(comment))
 
 
 class IssuesCommand(JiraCommand):

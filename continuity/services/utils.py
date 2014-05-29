@@ -9,7 +9,7 @@
     :license: BSD, see LICENSE for more details.
 """
 
-from datetime import datetime
+from dateutil.parser import parse
 
 
 class cached_property(object):
@@ -43,8 +43,6 @@ class datetime_property(object):
     :param function: The function to decorate.
     """
 
-    FORMAT_DATETIME = "%Y-%m-%dT%H:%M:%SZ"
-
     def __init__(self, function):
         self.function = function
 
@@ -57,7 +55,7 @@ class datetime_property(object):
         """
         try:
             value = self.function(instance)
-            ret_val = datetime.strptime(value, self.FORMAT_DATETIME)
+            ret_val = parse(value)
         except AttributeError:
             ret_val = None
 

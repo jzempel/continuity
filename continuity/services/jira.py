@@ -203,7 +203,8 @@ class JiraService(RemoteService):
     URI = "/rest/api/2/"
 
     def __init__(self, base, token):
-        url = urljoin(base, JiraService.URI)
+        self.base = base
+        url = urljoin(self.base, JiraService.URI)
         super(JiraService, self).__init__(url)
         self.token = token
 
@@ -281,6 +282,15 @@ class JiraService(RemoteService):
                 ret_val.append(transition)
 
         return ret_val
+
+    def get_issue_url(self, issue):
+        """Get the URL for the given issue.
+
+        :param issue: The issue to get a URL for.
+        """
+        path = "browse/{0}".format(issue.key)
+
+        return urljoin(self.base, path)
 
     def get_project(self, key):
         """Get a project for the given key.
