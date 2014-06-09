@@ -55,7 +55,7 @@ class datetime_property(object):
         """
         try:
             value = self.function(instance)
-            ret_val = parse(value)
+            ret_val = parse(value).replace(microsecond=0)
         except AttributeError:
             ret_val = None
 

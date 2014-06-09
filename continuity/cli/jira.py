@@ -120,10 +120,10 @@ class IssueCommand(JiraCommand):
         puts(colored.white(self.jira.get_issue_url(self.issue)))
 
         if self.namespace.comments:
-            for comment in self.github.get_comments(self.issue):
+            for comment in self.jira.get_comments(self.issue):
                 puts()
                 puts(colored.yellow("{0} ({1})".format(
-                    comment.user.login, comment.created)))
+                    comment.author.name, comment.created)))
                 puts()
                 puts(str(comment))
 

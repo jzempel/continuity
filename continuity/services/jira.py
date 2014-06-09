@@ -16,6 +16,36 @@ from requests.auth import _basic_auth_str
 from urlparse import urljoin
 
 
+class Comment(IDObject):
+    """Jira comment object.
+    """
+
+    def __str__(self):
+        """Comment string representation.
+        """
+        return self.data.get("body")
+
+    @property
+    def author(self):
+        """Comment author accessor.
+        """
+        author = self.data.get("author")
+
+        return User(author) if author else None
+
+    @datetime_property
+    def created(self):
+        """Comment created accessor.
+        """
+        return self.data.get("created")
+
+    @datetime_property
+    def updated(self):
+        """Comment updated accessor.
+        """
+        return self.data.get("updated")
+
+
 class Issue(IDObject):
     """Jira issue object.
     """
@@ -228,6 +258,21 @@ class JiraService(RemoteService):
                     **kwargs)
         except RequestException, e:
             raise JiraException(e)
+
+        return ret_val
+
+    def get_comments(self, issue):
+        """Get issue comments.
+
+        :param issue: The issue to get comments for.
+        """
+        ret_val = []
+        resource = "issue/{0}/comment".format(issue.key)
+        response = self._request("get", resource)
+        comments = response.get("comments")
+
+        for comment in comments:
+            ret_val.append(Comment(comment))
 
         return ret_val
 
