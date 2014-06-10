@@ -227,14 +227,18 @@ class CommitCommand(BaseCommand):
 
                 if configuration:
                     continuity = git.get_configuration("continuity")
+                    tracker = continuity.get("tracker")
 
                     try:
-                        if continuity.get("tracker") == "github":
-                            number = configuration["issue"]
+                        if tracker == "jira":
+                            mention = configuration["issue"]
                         else:
-                            number = configuration["story"]
+                            if continuity.get("tracker") == "github":
+                                number = configuration["issue"]
+                            else:
+                                number = configuration["story"]
 
-                        mention = "#{0}".format(number)
+                            mention = "#{0}".format(number)
 
                         with open(self.namespace.file, 'r') as file:
                             message = file.read()
@@ -615,7 +619,7 @@ class ReviewCommand(GitHubCommand):
             for error in getattr(e, "json").get("errors", []):
                 if error["code"] == "custom":
                     error_message = error["message"]
-                    message = "{0} - {1}{2}.".format(message,
+                    message = "{0} - {1}{2}".format(message,
                             error_message[:1].lower(), error_message[1:])
                     break
             else:

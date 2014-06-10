@@ -174,9 +174,9 @@ class ReviewCommand(BaseReviewCommand, PivotalTrackerCommand):
         description = prompt("Pull request description (optional)", '')
 
         if description:
-            self.description = "{0}\n\n{1}".format(self.story.url, description)
+            description = "{0}\n\n{1}".format(self.story.url, description)
         else:
-            self.description = self.story.url
+            description = self.story.url
 
         return self.github.create_pull_request(title, description, branch)
 

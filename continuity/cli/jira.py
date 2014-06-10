@@ -166,9 +166,25 @@ class IssuesCommand(JiraCommand):
         less(output)
 
 
-class ReviewCommand(BaseReviewCommand, JiraCommand):
+class ReviewCommand(JiraCommand, BaseReviewCommand):
     """Open a GitHub pull request for issue branch review.
     """
+
+    def _create_pull_request(self, branch):
+        """Create a pull request.
+
+        :param branch: The base branch the pull request is for.
+        """
+        title = prompt("Pull request title", self.git.branch.name)
+        description = prompt("Pull request description (optional)", '')
+        url = self.jira.get_issue_url(self.issue)
+
+        if description:
+            description = "{0}\n\n{1}".format(url, description)
+        else:
+            description = url
+
+        return self.github.create_pull_request(title, description, branch)
 
 
 class StartCommand(BaseStartCommand, JiraCommand):
