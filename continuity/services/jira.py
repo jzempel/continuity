@@ -11,6 +11,7 @@
 
 from .commons import DataObject, IDObject, RemoteService, ServiceException
 from .utils import cached_property, datetime_property
+from re import sub
 from requests import RequestException
 from requests.auth import _basic_auth_str
 from urlparse import urljoin
@@ -155,6 +156,28 @@ class Project(IDObject):
         return self.data.get("name")
 
 
+class Resolution(IDObject):
+    """Jira resolution object.
+    """
+
+    def __str__(self):
+        """Get a string representation of this transition.
+        """
+        return self.name
+
+    @property
+    def description(self):
+        """Transition description accessor.
+        """
+        return self.data.get("description")
+
+    @property
+    def name(self):
+        """Transition name accessor.
+        """
+        return self.data.get("name")
+
+
 class Transition(IDObject):
     """Jira transition object.
     """
@@ -175,6 +198,17 @@ class Transition(IDObject):
         """Transition name accessor.
         """
         return self.data.get("name")
+
+    @property
+    def slug(self):
+        """Transition slug accessor.
+        """
+        if self.name:
+            ret_val = sub(r"\W+", '-', self.name.lower())
+        else:
+            ret_val = None
+
+        return ret_val
 
     @property
     def status(self):

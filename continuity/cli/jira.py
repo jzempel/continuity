@@ -13,7 +13,7 @@ from .commons import (FinishCommand as BaseFinishCommand, GitCommand,
         ReviewCommand as BaseReviewCommand, StartCommand as BaseStartCommand)
 from .utils import less, prompt
 from clint.textui import colored, puts
-from continuity.services.jira import Issue, JiraService
+from continuity.services.jira import Issue, JiraException, JiraService
 from continuity.services.utils import cached_property
 from StringIO import StringIO
 
@@ -37,6 +37,35 @@ class JiraCommand(GitCommand):
             jql = "{0} = {1} AND {2}".format(field, value, jql)
 
         return self.jira.get_issues(jql)
+
+    def get_transition(self, status):
+        """Prompt for a transition for the given status.
+
+        :param status: A status to filter transitions by.
+        """
+        transitions = self.jira.get_issue_transitions(self.issue, status)
+
+        if transitions:
+            if len(transitions) > 1:
+                characters = ''
+                transition_map = {}
+
+                for index, transition in enumerate(transitions):
+                    key = str(index + 1)
+                    puts("{0}. {1}".format(colored.yellow(key),
+                        transition))
+                    characters = "{0}{1}".format(characters, key)
+                    transition_map[key] = transition
+
+                index = prompt("Select transition:",
+                        characters=characters)
+                ret_val = transition_map[index]
+            else:
+                ret_val = transitions[0]
+        else:
+            ret_val = None
+
+        return ret_val
 
     @cached_property
     def jira(self):
@@ -85,9 +114,42 @@ class JiraCommand(GitCommand):
         return self.jira.get_user(name)
 
 
-class FinishCommand(BaseFinishCommand, JiraCommand):
+class FinishCommand(JiraCommand, BaseFinishCommand):
     """Finish an issue branch.
     """
+
+    def _merge_branch(self, branch, *args):
+        """Merge a branch.
+
+        :param branch: The name of the branch to merge.
+        :param *args: Merge argument list.
+        """
+        try:
+            self.git.get_branch(branch)
+            self.issue  # Cache the branch issue.
+        finally:
+            self.git.get_branch(self.branch)
+
+        self.transition = self.get_transition(Issue.STATUS_COMPLETE)
+
+        if self.transition:
+            message = "{0} #{1}".format(self.issue.key, self.transition.slug)
+        else:
+            message = None
+
+        self.git.merge_branch(branch, message, args)
+
+    def finalize(self):
+        """Finalize this finish command.
+        """
+        if self.transition:
+            try:
+                self.jira.set_issue_transition(self.issue, self.transition)
+            except JiraException:
+                pass  # transition may have been set by smart commit.
+
+        puts("Finished issue {0}.".format(self.issue.key))
+        super(FinishCommand, self).finalize()
 
 
 class IssueCommand(JiraCommand):
@@ -213,29 +275,7 @@ class StartCommand(BaseStartCommand, JiraCommand):
 
             # Verify that user got the issue.
             if self.issue.assignee == self.user:
-                transitions = self.jira.get_issue_transitions(self.issue,
-                        Issue.STATUS_IN_PROGRESS)
-
-                if transitions:
-                    if len(transitions) > 1:
-                        characters = ''
-                        transition_map = {}
-
-                        for index, transition in enumerate(transitions):
-                            key = str(index + 1)
-                            puts("{0}. {1}".format(colored.yellow(key),
-                                transition))
-                            characters = "{0}{1}".format(characters, key)
-                            transition_map[key] = transition
-
-                        index = prompt("Select transition:",
-                                characters=characters)
-                        transition = transition_map[index]
-                    else:
-                        transition = transitions[0]
-                else:
-                    transition = None
-
+                transition = self.get_transition(Issue.STATUS_IN_PROGRESS)
                 branch = super(StartCommand, self).execute()
                 self.git.set_configuration("branch", branch,
                         issue=self.issue.key)

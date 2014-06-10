@@ -244,7 +244,11 @@ class CommitCommand(BaseCommand):
                             message = file.read()
 
                         if mention not in message:
-                            message = "[{0}] {1}".format(mention, message)
+                            if tracker == "jira":
+                                message = "{0} #comment {1}".format(mention,
+                                    message)
+                            else:
+                                message = "[{0}] {1}".format(mention, message)
 
                             with open(self.namespace.file, 'w') as file:
                                 file.write(message)
