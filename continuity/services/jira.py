@@ -200,6 +200,30 @@ class Transition(IDObject):
         return self.data.get("name")
 
     @property
+    def fields(self):
+        """Transition fields accessor.
+        """
+        return self.data.get("fields", {})
+
+    @property
+    def resolution(self):
+        """Transition resolution accessor.
+        """
+        return self.fields.get("resolution", {})
+
+    @property
+    def resolutions(self):
+        """Transition allowed resolutions accessor.
+        """
+        ret_val = []
+        resolutions = self.resolution.get("allowedValues", [])
+
+        for resolution in resolutions:
+            ret_val.append(Resolution(resolution))
+
+        return ret_val
+
+    @property
     def slug(self):
         """Transition slug accessor.
         """
@@ -350,7 +374,8 @@ class JiraService(RemoteService):
         :param status: Default `None`. A status to filter by.
         """
         ret_val = []
-        resource = "issue/{0}/transitions".format(issue.key)
+        resource = "issue/{0}/transitions?expand=transitions.fields".format(
+            issue.key)
         response = self._request("get", resource)
         transitions = response.get("transitions")
 
@@ -434,14 +459,19 @@ class JiraService(RemoteService):
 
         return self.get_issue(jql)
 
-    def set_issue_transition(self, issue, transition):
+    def set_issue_transition(self, issue, transition, resolution=None):
         """Set the transition for the given issue.
 
         :param issue: The issue to update.
         :param transition: The transition to assign to the issue.
+        :param resolution: Default `None`. The transition resolution.
         """
         resource = "issue/{0}/transitions".format(issue.key)
         data = {"transition": transition.id}
+
+        if resolution:
+            data["fields"] = {"resolution": {"id": resolution.id}}
+
         self._request("post", resource, data=data)
         jql = "issue = {0}".format(issue.key)
 

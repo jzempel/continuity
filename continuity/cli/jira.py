@@ -43,6 +43,8 @@ class JiraCommand(GitCommand):
 
         :param status: A status to filter transitions by.
         """
+        transition = None
+        resolution = None
         transitions = self.jira.get_issue_transitions(self.issue, status)
 
         if transitions:
@@ -59,13 +61,34 @@ class JiraCommand(GitCommand):
 
                 index = prompt("Select transition:",
                         characters=characters)
-                ret_val = transition_map[index]
+                transition = transition_map[index]
             else:
-                ret_val = transitions[0]
-        else:
-            ret_val = None
+                transition = transitions[0]
 
-        return ret_val
+            if transition.resolutions:
+                if len(transition.resolutions) > 1:
+                    characters = ''
+                    resolution_map = {}
+
+                    for index, resolution in enumerate(transition.resolutions):
+                        key = str(index + 1)
+                        puts("{0}. {1}".format(colored.yellow(key),
+                            resolution))
+                        characters = "{0}{1}".format(characters, key)
+                        resolution_map[key] = resolution
+
+                    if transition.resolution.get("required"):
+                        index = prompt("Select resolution:",
+                                characters=characters)
+                    else:
+                        index = prompt("Select resolution (optional):",
+                                default='', characters=characters)
+
+                    resolution = resolution_map.get(index)
+                else:
+                    resolution = transition.resolutions[0]
+
+        return (transition, resolution)
 
     @cached_property
     def jira(self):
@@ -130,7 +153,8 @@ class FinishCommand(JiraCommand, BaseFinishCommand):
         finally:
             self.git.get_branch(self.branch)
 
-        self.transition = self.get_transition(Issue.STATUS_COMPLETE)
+        (self.transition, self.resolution) = self.get_transition(
+            Issue.STATUS_COMPLETE)
 
         if self.transition:
             message = "{0} #{1}".format(self.issue.key, self.transition.slug)
@@ -144,7 +168,8 @@ class FinishCommand(JiraCommand, BaseFinishCommand):
         """
         if self.transition:
             try:
-                self.jira.set_issue_transition(self.issue, self.transition)
+                self.jira.set_issue_transition(self.issue, self.transition,
+                        self.resolution)
             except JiraException:
                 pass  # transition may have been set by smart commit.
 
@@ -275,13 +300,15 @@ class StartCommand(BaseStartCommand, JiraCommand):
 
             # Verify that user got the issue.
             if self.issue.assignee == self.user:
-                transition = self.get_transition(Issue.STATUS_IN_PROGRESS)
+                (transition, resolution) = self.get_transition(
+                    Issue.STATUS_IN_PROGRESS)
                 branch = super(StartCommand, self).execute()
                 self.git.set_configuration("branch", branch,
                         issue=self.issue.key)
 
                 if transition:
-                    self.jira.set_issue_transition(self.issue, transition)
+                    self.jira.set_issue_transition(self.issue, transition,
+                            resolution)
             else:
                 exit("Unable to update issue assignee.")
         else:
