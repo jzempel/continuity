@@ -3,7 +3,7 @@
     continuity.services.jira
     ~~~~~~~~~~~~~~~~~~~~~~~~
 
-    Jira API.
+    JIRA API.
 
     :copyright: 2014 by Jonathan Zempel.
     :license: BSD, see LICENSE for more details.
@@ -18,7 +18,7 @@ from urlparse import urljoin
 
 
 class Comment(IDObject):
-    """Jira comment object.
+    """JIRA comment object.
     """
 
     def __str__(self):
@@ -48,7 +48,7 @@ class Comment(IDObject):
 
 
 class Issue(IDObject):
-    """Jira issue object.
+    """JIRA issue object.
     """
 
     STATUS_COMPLETE = "Complete"
@@ -101,6 +101,12 @@ class Issue(IDObject):
         return self.data.get("key")
 
     @property
+    def priority(self):
+        """Issue priority accessor.
+        """
+        return self.fields.get("priority", {}).get("name")
+
+    @property
     def project(self):
         """Issue project accessor.
         """
@@ -122,6 +128,14 @@ class Issue(IDObject):
         return self.fields.get("summary")
 
     @property
+    def tasks(self):
+        """Issue sub-tasks accessor.
+        """
+        tasks = self.fields.get("subtasks", [])
+
+        return [Issue(task) for task in tasks]
+
+    @property
     def type(self):
         """Issue type name accessor.
         """
@@ -135,11 +149,11 @@ class Issue(IDObject):
 
 
 class Project(IDObject):
-    """Jira project object.
+    """JIRA project object.
     """
 
     def __str__(self):
-        """project string representation.
+        """Project string representation.
         """
         return "{0} ({1})".format(self.name, self.key)
 
@@ -157,29 +171,29 @@ class Project(IDObject):
 
 
 class Resolution(IDObject):
-    """Jira resolution object.
+    """JIRA resolution object.
     """
 
     def __str__(self):
-        """Get a string representation of this transition.
+        """Get a string representation of this resolution.
         """
         return self.name
 
     @property
     def description(self):
-        """Transition description accessor.
+        """Resolution description accessor.
         """
         return self.data.get("description")
 
     @property
     def name(self):
-        """Transition name accessor.
+        """Resolution name accessor.
         """
         return self.data.get("name")
 
 
 class Transition(IDObject):
-    """Jira transition object.
+    """JIRA transition object.
     """
 
     def __str__(self):
@@ -243,7 +257,7 @@ class Transition(IDObject):
 
 
 class User(DataObject):
-    """Jira user object.
+    """JIRA user object.
     """
 
     def __cmp__(self, other):
@@ -277,12 +291,12 @@ class User(DataObject):
 
 
 class JiraException(ServiceException):
-    """Base Jira exception.
+    """Base JIRA exception.
     """
 
 
 class JiraService(RemoteService):
-    """Jira service.
+    """JIRA service.
 
     :param base: The service base URL.
     :param token: The authentication token to use.
@@ -297,7 +311,7 @@ class JiraService(RemoteService):
         self.token = token
 
     def _request(self, method, resource, **kwargs):
-        """Send a Jira request.
+        """Send a JIRA request.
 
         :param method: The HTTP method.
         :param resource: The URI resource.
@@ -337,7 +351,7 @@ class JiraService(RemoteService):
     def get_issues(self, jql=None):
         """Get a list of issues.
 
-        :param jql: Default `None`. Jira Query Language string. See
+        :param jql: Default `None`. JIRA Query Language string. See
             `https://confluence.atlassian.com/display/JIRA/Advanced+Searching`
         """
         ret_val = []
@@ -353,7 +367,7 @@ class JiraService(RemoteService):
     def get_issue(self, jql):
         """Get an issue identified by the given JQL.
 
-        :param jql: Jira Query Language string.
+        :param jql: JIRA Query Language string.
         """
         try:
             issues = self.get_issues(jql)

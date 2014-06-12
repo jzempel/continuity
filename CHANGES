@@ -4,8 +4,9 @@ Changelog
 Version 0.8
 ~~~~~~~~~~~
 
-* Added unit testing.
+* Added support for JIRA.
 * Support GitHub 2FA.
+* Initial unit testing.
 
 Version 0.7.5
 ~~~~~~~~~~~~~

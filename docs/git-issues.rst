@@ -6,15 +6,19 @@ continuity
 Synopsis
 --------
 
-| *git issues* [--assignedtoyou]
+| *git issues* [--assignedtoyou|--myissues]
 
 Description
 -----------
 
-Output is formatted to include issue ID, title, status, and assignee.
+Output is formatted to include issue number/key, title/summary, status, and
+assignee.
 
 Options
 -------
 
 -u, --assignedtoyou
-    Only list issues assigned to you.
+    *GitHub configuration only.* Only list issues assigned to you.
+
+-m, --myissues
+    *JIRA configuration only.* Only list issues for which you are the assignee.

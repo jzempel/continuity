@@ -34,10 +34,10 @@ MESSAGES = {
     "github_oauth_token": "GitHub OAuth token",
     "github_password": "GitHub password",
     "github_user": "GitHub user",
-    "jira_password": "Jira password",
-    "jira_project_key": "Jira project key",
-    "jira_url": "Jira base url",
-    "jira_user": "Jira username",
+    "jira_password": "JIRA password",
+    "jira_project_key": "JIRA project key",
+    "jira_url": "JIRA base url",
+    "jira_user": "JIRA username",
     "pivotal_api_token": "Pivotal Tracker API token",
     "pivotal_email": "Pivotal Tracker email",
     "pivotal_exclusive": "Exclude stories which you do not own?",
@@ -505,7 +505,7 @@ class InitCommand(GitCommand):
         try:
             jira.get_user()
         except:
-            exit("Invalid Jira credentials.")
+            exit("Invalid JIRA credentials.")
 
         projects = jira.projects
 
@@ -522,7 +522,7 @@ class InitCommand(GitCommand):
             if not project:
                 exit("Invalid project key.")
         else:
-            exit("No Jira projects found.")
+            exit("No JIRA projects found.")
 
         return {
             "auth-token": token,
@@ -754,14 +754,15 @@ def get_commands(tracker=None):
             })
         elif tracker == "jira":
             from .jira import (FinishCommand, IssueCommand, IssuesCommand,
-                    ReviewCommand, StartCommand)
+                    ReviewCommand, StartCommand, TasksCommand)
 
             ret_val.update({
                 FinishCommand.name: FinishCommand,
                 IssueCommand.name: IssueCommand,
                 IssuesCommand.name: IssuesCommand,
                 ReviewCommand.name: ReviewCommand,
-                StartCommand.name: StartCommand
+                StartCommand.name: StartCommand,
+                TasksCommand.name: TasksCommand
             })
         else:
             from .pt import (BacklogCommand, FinishCommand, ReviewCommand,

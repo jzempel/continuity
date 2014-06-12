@@ -1,4 +1,4 @@
-continuity: Continuous dev flow via GitHub Issues or Pivotal Tracker.
+continuity: Continuous dev flow via GitHub Issues, Pivotal Tracker, or JIRA.
 
 Inspired by GitHub Flow (http://j.mp/github-flow)
 
@@ -8,15 +8,14 @@ The Concept
 
 This is a re-summarization of GitHub Flow:
 - Anything in the 'master' branch is deployable.
-- All new work is created with a 'story' or 'issue' branch off of 'master' (or
-  an integration branch).
-- In process work is regularly committed locally and pushed to a remote 'story'
-  or 'issue' branch.
-- When the 'story' branch is ready for review, open a pull request.
-- Once the 'story' branch is reviewed, merge it into 'master' (or an
+- All new work is created with a 'issue' branch off of 'master' (or an
   integration branch).
-- Ideally, 'master' will be deployed as soon as a 'story' or 'issue' is merged
-  and pushed.
+- In process work is regularly committed locally and pushed to a remote 'issue'
+  branch.
+- When the 'issue' branch is ready for review, open a pull request.
+- Once the 'issue' branch is reviewed, merge it into 'master' (or an
+  integration branch).
+- Ideally, 'master' will be deployed as soon as an 'issue' is merged and pushed.
 
 The first and last of these points are informed primarily by The Lean Startup
 Movement. If you haven't already, buy and read the book by Eric Ries
@@ -27,7 +26,7 @@ The middle four points are covered by continuity. Once a git repository is
 configured for continuity; issue management, branching, pull request review, and
 merging are a breeze. And it's all handled at the command line using custom git
 commands. So you're not bouncing around between github.com, pivotaltracker.com,
-and your code in order to get things done. Stay in the zone!
+JIRA, and your code in order to get things done. Stay in the zone!
 
 
 The Installation
@@ -54,18 +53,18 @@ init
     Initialize a git repository for use with continuity.
 
 start (aliased by init as git-start)
-    Start a branch linked to a story/issue.
+    Start a branch linked to an issue/story.
 
 review (aliased by init as git-review)
-    Open a GitHub pull request for story/issue branch review.
+    Open a GitHub pull request for issue/story branch review.
 
 finish (aliased by init as git-finish)
-    Finish a story/issue branch.
+    Finish an issue/story branch.
 
 tasks (aliased by init as git-tasks)
-    List and manage story/issue tasks.
+    List and manage issue/story tasks.
 
-* with GitHub Issues configuration:
+* with GitHub Issues or JIRA configuration:
 
 issues (aliased by init as git-issues)
     List open issues.

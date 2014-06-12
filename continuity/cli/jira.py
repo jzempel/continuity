@@ -3,14 +3,15 @@
     continuity.cli.jira
     ~~~~~~~~~~~~~~~~~~~
 
-    Continuity Jira CLI commands.
+    Continuity JIRA CLI commands.
 
     :copyright: 2014 by Jonathan Zempel.
     :license: BSD, see LICENSE for more details.
 """
 
 from .commons import (FinishCommand as BaseFinishCommand, GitCommand,
-        ReviewCommand as BaseReviewCommand, StartCommand as BaseStartCommand)
+        ReviewCommand as BaseReviewCommand, StartCommand as BaseStartCommand,
+        TasksCommand as BaseTasksCommand)
 from .utils import less, prompt
 from clint.textui import colored, puts
 from continuity.services.jira import Issue, JiraException, JiraService
@@ -19,19 +20,25 @@ from StringIO import StringIO
 
 
 class JiraCommand(GitCommand):
-    """Base Jira command.
+    """Base JIRA command.
     """
 
-    def get_issues(self, **parameters):
+    def get_issues(self, status, **parameters):
         """Get a list of issues.
 
+        :param status: A status list to filter by.
         :param parameters: Query field-value parameters.
         """
+        if isinstance(status, basestring):
+            status_category = '"{0}"'.format(status)
+        else:
+            statuses = ["'{0}'".format(item) for item in status]
+            status_category = ','.join(statuses)
+
         jql = "project = {0} AND \
-                statusCategory = {1} AND \
+                statusCategory in ({1}) AND \
                 issueType in standardIssueTypes() \
-                ORDER BY created ASC".format(self.project.key,
-                        Issue.STATUS_NEW)
+                ORDER BY created ASC".format(self.project.key, status_category)
 
         for field, value in parameters.iteritems():
             jql = "{0} = {1} AND {2}".format(field, value, jql)
@@ -92,7 +99,7 @@ class JiraCommand(GitCommand):
 
     @cached_property
     def jira(self):
-        """Jira accessor.
+        """JIRA accessor.
         """
         token = self.get_value("jira", "auth-token")
         base = self.get_value("jira", "url")
@@ -232,22 +239,31 @@ class IssuesCommand(JiraCommand):
     def execute(self):
         """Execute this issues command.
         """
+        status = [Issue.STATUS_NEW, Issue.STATUS_IN_PROGRESS]
+
         if self.namespace.myissues:
-            issues = self.get_issues(assignee="currentUser()")
+            issues = self.get_issues(status, assignee="currentUser()")
         else:
-            issues = self.get_issues()
+            issues = self.get_issues(status)
 
         output = StringIO()
 
         for issue in issues:
             key = colored.yellow(issue.key)
-            type = issue.type.upper()
+            detail = issue.type.upper()
+
+            if issue.priority:
+                detail = "{0} ({1})".format(detail, issue.priority.lower())
+
+            if issue.status:
+                detail = "{0} [{1}]".format(detail, issue.status.upper())
+
             information = issue.summary
 
             if issue.assignee:
                 information = "{0} ({1})".format(information, issue.assignee)
 
-            message = "{0} {1}: {2}\n".format(key, type, information)
+            message = "{0} {1}: {2}\n".format(key, detail, information)
             output.write(message)
 
         less(output)
@@ -349,7 +365,7 @@ class StartCommand(BaseStartCommand, JiraCommand):
         exclusive = self.namespace.exclusive
 
         if key and exclusive:
-            puts("Retrieving issue {0} from Jira for {1}...".format(key,
+            puts("Retrieving issue {0} from JIRA for {1}...".format(key,
                 self.user))
             jql = "project = {0} AND \
                     statusCategory = {1} AND \
@@ -358,24 +374,43 @@ class StartCommand(BaseStartCommand, JiraCommand):
                 self.project.key, Issue.STATUS_NEW, key, self.user)
             ret_val = self.jira.get_issue(jql)
         elif key:
-            puts("Retrieving issue {0} from Jira...".format(key))
+            puts("Retrieving issue {0} from JIRA...".format(key))
             jql = "project = {0} AND \
                     statusCategory = {1} AND \
                     issue = {2}".format(
                 self.project.key, Issue.STATUS_NEW, key)
             ret_val = self.jira.get_issue(jql)
         elif exclusive:
-            puts("Retrieving next issue from Jira for {0}...".format(
+            puts("Retrieving next issue from JIRA for {0}...".format(
                 self.user))
-            issues = self.get_issues(assignee=self.user)
+            issues = self.get_issues(Issue.STATUS_NEW, assignee=self.user)
 
             if issues:
                 ret_val = issues[0]
         else:
-            puts("Retrieving next available issue from Jira...")
-            issues = self.get_issues()
+            puts("Retrieving next available issue from JIRA...")
+            issues = self.get_issues(Issue.STATUS_NEW)
 
             if issues:
                 ret_val = issues[0]
 
         return ret_val
+
+
+class TasksCommand(BaseTasksCommand, JiraCommand):
+    """List and manage issue tasks.
+    """
+
+    def _get_tasks(self):
+        """Task list accessor.
+        """
+        return self.issue.tasks
+
+    def finalize(self):
+        """Finalize this tasks command.
+        """
+        for (index, task) in enumerate(self.tasks):
+            checkmark = 'x' if task.status == Issue.STATUS_COMPLETE else ' '
+            message = "[{0}] {1}. {2}".format(checkmark, index + 1,
+                    task.summary)
+            puts(message)

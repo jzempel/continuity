@@ -11,8 +11,8 @@ Description
 -----------
 
 Continuity configures a git repository with a custom set of commands that
-provide high-level operations for supporting GitHub Flow via GitHub Issues
-or Pivotal Tracker.
+provide high-level operations for supporting GitHub Flow via GitHub Issues,
+Pivotal Tracker, or JIRA.
 
 Options
 -------
@@ -50,8 +50,8 @@ tasks
 
     Alias: **git-tasks(1)**
 
-GitHub Commands
----------------
+GitHub and JIRA Commands
+------------------------
 
 issue
     Display issue branch information.
