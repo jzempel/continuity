@@ -400,17 +400,50 @@ class StartCommand(BaseStartCommand, JiraCommand):
 class TasksCommand(BaseTasksCommand, JiraCommand):
     """List and manage issue tasks.
     """
+    def __init__(self, parser, namespace):
+        super(TasksCommand, self).__init__(parser, namespace)
+        parser.add_argument("-i", "--indeterminate", metavar="<number>")
 
     def _get_tasks(self):
         """Task list accessor.
         """
         return self.issue.tasks
 
+    def _set_task(self, task, checked):
+        """Task mutator.
+
+        :param task: The task to update.
+        :param checked: ``True`` if the task is complete.
+        """
+        if checked:
+            if self.namespace.indeterminate:
+                status = Issue.STATUS_IN_PROGRESS
+            else:
+                status = Issue.STATUS_COMPLETE
+        else:
+            status = Issue.STATUS_NEW
+
+        (transition, resolution) = self.get_transition(status)
+
+        return self.jira.set_issue_transition(task, transition, resolution)
+
+    def execute(self):
+        """Execute this tasks command.
+        """
+        self.namespace.check = self.namespace.indeterminate
+        super(TasksCommand, self).execute()
+
     def finalize(self):
         """Finalize this tasks command.
         """
         for (index, task) in enumerate(self.tasks):
-            checkmark = 'x' if task.status == Issue.STATUS_COMPLETE else ' '
+            if task.status == Issue.STATUS_IN_PROGRESS:
+                checkmark = '-'
+            elif task.status == Issue.STATUS_COMPLETE:
+                checkmark = 'x'
+            else:
+                checkmark = ' '
+
             message = "[{0}] {1}. {2}".format(checkmark, index + 1,
                     task.summary)
             puts(message)
