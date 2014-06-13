@@ -98,6 +98,9 @@ class GitService(object):
         if push:
             self.push_branch()
 
+            if not self.remote:
+                raise GitException("Invalid remote")
+
         return ret_val
 
     def delete_branch(self, name):

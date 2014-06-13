@@ -670,6 +670,10 @@ class StartCommand(GitCommand):
 
                 puts("Switched to a new branch '{0}'".format(ret_val))
             except GitException, e:
+                if not self.git.remote:
+                    self.git.get_branch(branch)
+                    self.git.delete_branch(ret_val)
+
                 exit(e)
         else:
             message = "error: Attempted start from non-integration branch; switch to '{0}'.\nUse -f if you really want to start from '{1}'."  # NOQA
