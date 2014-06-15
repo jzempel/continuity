@@ -35,7 +35,7 @@ setup(
     license=continuity.__license__,
     author=continuity.__author__,
     author_email="jzempel@gmail.com",
-    description="Continuous dev flow via GitHub Issues or Pivotal Tracker.",
+    description="Continuous dev flow via GitHub Issues, Pivotal Tracker, or JIRA.",  # NOQA
     long_description=__doc__,
     packages=["continuity"],
     include_package_data=True,
