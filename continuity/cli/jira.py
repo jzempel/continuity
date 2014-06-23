@@ -45,17 +45,19 @@ class JiraCommand(GitCommand):
 
         return self.jira.get_issues(jql)
 
-    def get_transition(self, status):
+    def get_transition(self, status, do_prompt=False, default=None):
         """Prompt for a transition for the given status.
 
         :param status: A status to filter transitions by.
+        :param do_prompt: Default `False`. Prevent auto-transition.
+        :param default: Default `None`. Transition prompt default.
         """
         transition = None
         resolution = None
         transitions = self.jira.get_issue_transitions(self.issue, status)
 
         if transitions:
-            if len(transitions) > 1:
+            if len(transitions) > 1 or do_prompt:
                 characters = ''
                 transition_map = {}
 
@@ -66,13 +68,17 @@ class JiraCommand(GitCommand):
                     characters = "{0}{1}".format(characters, key)
                     transition_map[key] = transition
 
-                index = prompt("Select transition:",
-                        characters=characters)
-                transition = transition_map[index]
+                if default is None:
+                    message = "Select transition:"
+                else:
+                    message = "Select transition (optional):"
+
+                index = prompt(message, default=default, characters=characters)
+                transition = transition_map.get(index)
             else:
                 transition = transitions[0]
 
-            if transition.resolutions:
+            if transition and transition.resolutions:
                 if len(transition.resolutions) > 1:
                     characters = ''
                     resolution_map = {}
@@ -89,7 +95,7 @@ class JiraCommand(GitCommand):
                                 characters=characters)
                     else:
                         index = prompt("Select resolution (optional):",
-                                default='', characters=characters)
+                                default=False, characters=characters)
 
                     resolution = resolution_map.get(index)
                 else:
@@ -287,7 +293,24 @@ class ReviewCommand(JiraCommand, BaseReviewCommand):
         else:
             description = url
 
+        transition = self.get_value("jira", "review-transition")
+
+        if transition:
+            (self.transition, self.resolution) = self.get_transition(
+                Issue.STATUS_IN_PROGRESS, do_prompt=True, default=False)
+        else:
+            self.transition = None
+
         return self.github.create_pull_request(title, description, branch)
+
+    def finalize(self):
+        """Finalize this review command.
+        """
+        if self.transition:
+            self.jira.set_issue_transition(self.issue, self.transition,
+                    self.resolution)
+
+        super(ReviewCommand, self).finalize()
 
 
 class StartCommand(BaseStartCommand, JiraCommand):
