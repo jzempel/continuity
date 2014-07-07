@@ -47,9 +47,8 @@ class GitService(object):
         mkdir = path is not None and not exists(path)
 
         try:
-            self.repo = Repo.init(path, mkdir=mkdir)
-
             if mkdir:
+                self.repo = Repo.init(path)
                 name = join(path, ".gitignore")
 
                 with file(name, 'a'):
@@ -57,6 +56,8 @@ class GitService(object):
 
                 self.execute("add", basename(name))
                 self.execute("commit", "-m", "Initial commit")
+            else:
+                self.repo = Repo(path)
 
             if origin:
                 try:
@@ -111,9 +112,9 @@ class GitService(object):
         try:
             ret_val = self.execute("branch", "-d", str(name))
         except GitCommandError, error:
-            exception = GitException(error.stderror, error.status)
+            traceback = exc_info()[2]
 
-            raise exception, None, exc_info()[2]
+            raise GitException(error.stderror, error.status), None, traceback
 
         return ret_val
 
@@ -185,9 +186,9 @@ class GitService(object):
         try:
             ret_val = self.execute(*command)
         except GitCommandError, error:
-            exception = GitException(error.stderr, error.status)
+            traceback = exc_info()[2]
 
-            raise exception, None, exc_info()[2]
+            raise GitException(error.stderror, error.status), None, traceback
 
         return ret_val
 
@@ -204,9 +205,9 @@ class GitService(object):
         try:
             ret_val = self.execute("push", remote.name, self.branch.name)
         except GitCommandError, error:
-            exception = GitException(error.stderr, error.status)
+            traceback = exc_info()[2]
 
-            raise exception, None, exc_info()[2]
+            raise GitException(error.stderr, error.status), None, traceback
 
         return ret_val
 
