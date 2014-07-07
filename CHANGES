@@ -1,6 +1,11 @@
 Changelog
 ---------
 
+Version 0.8.2
+~~~~~~~~~~~~~
+
+* Prevent git repo creation on command execution.
+
 Version 0.8.1
 ~~~~~~~~~~~~~
 
