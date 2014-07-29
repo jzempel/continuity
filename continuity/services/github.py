@@ -547,7 +547,7 @@ class GitHubService(RemoteService):
                 verify=False)
 
         if response.status_code == codes.unprocessable:  # already exists.
-            response = get(url, auth=auth, headers=headers)
+            response = get(url, auth=auth, headers=headers, verify=False)
             authorizations = response.json()
 
             for authorization in authorizations:

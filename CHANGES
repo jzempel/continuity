@@ -1,6 +1,11 @@
 Changelog
 ---------
 
+Version 0.8.3
+~~~~~~~~~~~~~
+
+* Prevent SSL error on GitHub request.
+
 Version 0.8.2
 ~~~~~~~~~~~~~
 

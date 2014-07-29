@@ -11,4 +11,4 @@
 
 __author__ = "Jonathan Zempel"
 __license__ = "BSD"
-__version__ = "0.8.2"
+__version__ = "0.8.3"
