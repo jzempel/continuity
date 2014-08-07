@@ -1,6 +1,11 @@
 Changelog
 ---------
 
+Version 0.8.4
+~~~~~~~~~~~~~
+
+* Explicit 'exit' import for JIRA commands.
+
 Version 0.8.3
 ~~~~~~~~~~~~~
 

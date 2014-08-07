@@ -17,6 +17,7 @@ from clint.textui import colored, puts
 from continuity.services.jira import Issue, JiraException, JiraService
 from continuity.services.utils import cached_property
 from StringIO import StringIO
+from sys import exit
 
 
 class JiraCommand(GitCommand):
