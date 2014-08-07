@@ -372,7 +372,7 @@ class GitHubRequestException(GitHubException):
 class GitHubService(RemoteService):
     """GitHub service.
 
-    :param git: Git object instance.
+    :param git: Git service instance.
     :param token: GitHub OAuth token.
     """
 
@@ -687,6 +687,14 @@ class GitHubService(RemoteService):
             ret_val = None
 
         return ret_val
+
+    def remove_branch(self, name):
+        """Remove a branch.
+
+        :param name: The name of the branch to remove.
+        """
+        resource = "git/refs/heads/{0}".format(name)
+        self._repo_request("delete", resource)
 
     def remove_hook(self, name):
         """Remove a hook.

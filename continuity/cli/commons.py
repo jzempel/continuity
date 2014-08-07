@@ -263,7 +263,7 @@ class CommitCommand(BaseCommand):
             exit()
 
 
-class FinishCommand(GitCommand):
+class FinishCommand(GitHubCommand):
     """Finish work on a branch.
 
     :param parser: Command-line argument parser.
@@ -320,6 +320,15 @@ class FinishCommand(GitCommand):
         else:
             message = "error: Attempted finish from non-integration branch; switch to '{0}'."  # NOQA
             exit(message.format(branch))
+
+    def finalize(self):
+        """Finalize this finish command.
+        """
+        try:
+            self.github.remove_branch(self.namespace.branch)
+            self.git.prune_branches()
+        except GitHubException:
+            pass
 
 
 class InitCommand(GitCommand):

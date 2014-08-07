@@ -192,6 +192,11 @@ class GitService(object):
 
         return ret_val
 
+    def prune_branches(self):
+        """Prune stale remote branches.
+        """
+        return self.execute("remote", "prune", self.repo.remotes.origin.name)
+
     def push_branch(self, name=None):
         """Push the given branch name.
 
