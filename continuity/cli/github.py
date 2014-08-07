@@ -20,7 +20,7 @@ from StringIO import StringIO
 from sys import exit
 
 
-class FinishCommand(BaseFinishCommand, GitHubCommand):
+class FinishCommand(BaseFinishCommand):
     """Finish an issue branch.
     """
 
