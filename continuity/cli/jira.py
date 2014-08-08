@@ -30,21 +30,37 @@ class JiraCommand(GitCommand):
         :param status: A status list to filter by.
         :param parameters: Query field-value parameters.
         """
-        if isinstance(status, basestring):
-            status_category = '"{0}"'.format(status)
-        else:
-            statuses = ["'{0}'".format(item) for item in status]
-            status_category = ','.join(statuses)
-
-        jql = "project = {0} AND \
-                statusCategory in ({1}) AND \
-                issueType in standardIssueTypes() \
-                ORDER BY created ASC".format(self.project.key, status_category)
-
-        for field, value in parameters.iteritems():
-            jql = "{0} = {1} AND {2}".format(field, value, jql)
+        parameters["project"] = self.project.key
+        parameters["statusCategory"] = status
+        jql = "{0} AND issueType in standardIssueTypes() \
+                ORDER BY created ASC".format(self.get_jql(**parameters))
 
         return self.jira.get_issues(jql)
+
+    @staticmethod
+    def get_jql(**parameters):
+        """Get simple formatted JQL for the given keyword-arguments.
+
+        :param parameters: Query field-value parameters.
+        """
+        ret_val = ''
+
+        for field, value in parameters.iteritems():
+            if value:
+                if isinstance(value, basestring):
+                    jql = "{0} = \"{1}\"".format(field, value)
+                else:
+                    formatted = lambda value: "NULL" if value is None \
+                        else "'{0}'".format(value)
+                    values = [formatted(item) for item in value]
+                    jql = "{0} in ({1})".format(field, ','.join(values))
+
+                if ret_val:
+                    ret_val = "{0} AND {1}".format(ret_val, jql)
+                else:
+                    ret_val = jql
+
+        return ret_val
 
     def get_transition(self, status, do_prompt=False, default=None):
         """Prompt for a transition for the given status.
@@ -122,7 +138,7 @@ class JiraCommand(GitCommand):
 
         if configuration:
             try:
-                jql = "issue = {0}".format(configuration["issue"])
+                jql = self.get_jql(issue=configuration["issue"])
                 ret_val = self.jira.get_issue(jql)
             except KeyError:
                 ret_val = None
@@ -151,7 +167,7 @@ class JiraCommand(GitCommand):
         return self.jira.get_user(name)
 
 
-class FinishCommand(JiraCommand, BaseFinishCommand):
+class FinishCommand(BaseFinishCommand, JiraCommand):
     """Finish an issue branch.
     """
 
@@ -276,7 +292,7 @@ class IssuesCommand(JiraCommand):
         less(output)
 
 
-class ReviewCommand(JiraCommand, BaseReviewCommand):
+class ReviewCommand(BaseReviewCommand, JiraCommand):
     """Open a GitHub pull request for issue branch review.
     """
 
@@ -326,7 +342,46 @@ class StartCommand(BaseStartCommand, JiraCommand):
                 nargs='?')
         parser.add_argument("-m", "--myissues", action="store_true",
                 help="only start issues assigned to me")
+        parser.add_argument("-i", "--ignore", action="store_true",
+                help="ignore issue status")
         super(StartCommand, self).__init__(parser, namespace)
+
+    @property
+    def error(self):
+        """Error message accessor.
+        """
+        if self.namespace.key and not self.namespace.key.startswith(
+                self.project.key):
+            ret_val = "No issue {0} found in project {1}.".format(
+                self.namespace.key, self.project)
+        if self.namespace.key and self.namespace.exclusive:
+            ret_val = "No available issue {0} found assigned to you.".\
+                format(self.namespace.key)
+
+            if not self.namespace.ignore:
+                jql = self.get_jql(issue=self.namespace.key,
+                    statusCategory=self.status(True), assignee=str(self.user))
+
+                if self.jira.get_issue(jql):
+                    ret_val = "{0}\nUse -i to ignore the status on issues assigned to you.".\
+                        format(ret_val)
+        elif self.namespace.key:
+            ret_val = "No available issue {0} found.".format(
+                self.namespace.key)
+
+            if not self.namespace.ignore:
+                jql = self.get_jql(issue=self.namespace.key,
+                    statusCategory=self.status(True))
+
+                if self.jira.get_issue(jql):
+                    ret_val = "{0}\nUse -i to ignore issue status.".format(
+                        ret_val)
+        elif self.namespace.exclusive:
+            ret_val = "No available issues found assigned to you."
+        else:
+            ret_val = "No available issues found."
+
+        return ret_val
 
     def execute(self):
         """Execute this start command.
@@ -352,20 +407,7 @@ class StartCommand(BaseStartCommand, JiraCommand):
             else:
                 exit("Unable to update issue assignee.")
         else:
-            if self.namespace.key and not self.namespace.key.startswith(
-                    self.project.key):
-                exit("No issue {0} found in project {1}.".format(
-                    self.namespace.key, self.project))
-            if self.namespace.key and self.namespace.exclusive:
-                exit("No available issue {0} found assigned to you.".format(
-                    self.namespace.key))
-            elif self.namespace.key:
-                exit("No available issue {0} found.".format(
-                    self.namespace.key))
-            elif self.namespace.exclusive:
-                exit("No available issues found assigned to you.")
-            else:
-                exit("No available issues found.")
+            exit(self.error)
 
     def exit(self):
         """Handle start command exit.
@@ -387,36 +429,54 @@ class StartCommand(BaseStartCommand, JiraCommand):
 
         key = self.namespace.key
         exclusive = self.namespace.exclusive
+        status = self.status(self.namespace.ignore)
 
         if key and exclusive:
             puts("Retrieving issue {0} from JIRA for {1}...".format(key,
                 self.user))
-            jql = "project = {0} AND \
-                    statusCategory = {1} AND \
-                    issue = {2} AND \
-                    assignee = {3}".format(
-                self.project.key, Issue.STATUS_NEW, key, self.user)
+            parameters = {
+                "project": self.project.key,
+                "statusCategory": status,
+                "issue": key,
+                "assignee": str(self.user)
+            }
+            jql = self.get_jql(**parameters)
             ret_val = self.jira.get_issue(jql)
         elif key:
             puts("Retrieving issue {0} from JIRA...".format(key))
-            jql = "project = {0} AND \
-                    statusCategory = {1} AND \
-                    issue = {2}".format(
-                self.project.key, Issue.STATUS_NEW, key)
+            parameters = {
+                "project": self.project.key,
+                "statusCategory": status,
+                "issue": key
+            }
+            jql = self.get_jql(**parameters)
             ret_val = self.jira.get_issue(jql)
         elif exclusive:
             puts("Retrieving next issue from JIRA for {0}...".format(
                 self.user))
-            issues = self.get_issues(Issue.STATUS_NEW, assignee=self.user)
+            issues = self.get_issues(status, assignee=str(self.user))
 
             if issues:
                 ret_val = issues[0]
         else:
             puts("Retrieving next available issue from JIRA...")
-            issues = self.get_issues(Issue.STATUS_NEW)
+            issues = self.get_issues(status, assignee=[self.user, None])
 
             if issues:
                 ret_val = issues[0]
+
+        return ret_val
+
+    @staticmethod
+    def status(ignore):
+        """Valid issue status list accessor.
+
+        :param ignore: Determine whether to ignore 'in progress' status.
+        """
+        if ignore:
+            ret_val = [Issue.STATUS_NEW, Issue.STATUS_IN_PROGRESS]
+        else:
+            ret_val = Issue.STATUS_NEW
 
         return ret_val
 

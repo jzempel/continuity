@@ -9,7 +9,8 @@
     :license: BSD, see LICENSE for more details.
 """
 
-from .commons import (FinishCommand as BaseFinishCommand, GitHubCommand,
+from .commons import (FinishCommand as BaseFinishCommand,
+        GitHubCommand as BaseGitHubCommand,
         ReviewCommand as BaseReviewCommand, StartCommand as BaseStartCommand,
         TasksCommand as BaseTasksCommand)
 from .utils import less
@@ -20,7 +21,52 @@ from StringIO import StringIO
 from sys import exit
 
 
-class FinishCommand(BaseFinishCommand):
+class GitHubCommand(BaseGitHubCommand):
+    """Base GitHub command.
+    """
+
+    def get_issues(self, **parameters):
+        """Get a list of issues, ordered by milestone.
+
+        :param parameters: Parameter keyword-arguments.
+        """
+        ret_val = []
+        milestones = self.github.get_milestones()
+
+        for milestone in milestones:
+            parameters["milestone"] = milestone.number
+            issues = self.github.get_issues(**parameters)
+            ret_val.extend(issues)
+
+        parameters["milestone"] = None
+        issues = self.github.get_issues(**parameters)
+        ret_val.extend(issues)
+
+        return ret_val
+
+    @cached_property
+    def issue(self):
+        """Current branch issue accessor.
+        """
+        configuration = self.git.get_configuration("branch",
+                self.git.branch.name)
+
+        if configuration:
+            try:
+                number = configuration["issue"]
+                ret_val = self.github.get_issue(number)
+            except KeyError:
+                ret_val = None
+        else:
+            ret_val = None
+
+        if not ret_val:
+            exit("fatal: Not an issue branch.")
+
+        return ret_val
+
+
+class FinishCommand(BaseFinishCommand, GitHubCommand):
     """Finish an issue branch.
     """
 
@@ -143,7 +189,7 @@ class IssuesCommand(GitHubCommand):
         less(output)
 
 
-class ReviewCommand(BaseReviewCommand):
+class ReviewCommand(BaseReviewCommand, GitHubCommand):
     """Open a GitHub pull request for issue branch review.
     """
 
@@ -168,7 +214,41 @@ class StartCommand(BaseStartCommand, GitHubCommand):
                 nargs='?', type=int)
         parser.add_argument("-u", "--assignedtoyou", action="store_true",
                 help="only start issues assigned to you")
+        parser.add_argument("-i", "--ignore", action="store_true",
+                help="ignore issue status")
         super(StartCommand, self).__init__(parser, namespace)
+
+    @property
+    def error(self):
+        """Error message accessor.
+        """
+        if self.namespace.number and self.namespace.exclusive:
+            ret_val = "No available issue #{0} found assigned to you.".\
+                format(self.namespace.number)
+
+            if not self.namespace.ignore:
+                issue = self.github.get_issue(self.namespace.number)
+
+                if issue and issue.state == Issue.STATE_OPEN and \
+                        issue.assignee == self.github.get_user():
+                    ret_val = "{0}\nUse -i to ignore the status on issues assigned to you.".\
+                        format(ret_val)
+        elif self.namespace.number:
+            ret_val = "No available issue #{0} found.".format(
+                self.namespace.number)
+
+            if not self.namespace.ignore:
+                issue = self.github.get_issue(self.namespace.number)
+
+                if issue and issue.state == Issue.STATE_OPEN:
+                    ret_val = "{0}\nUse -i to ignore issue status.".format(
+                        ret_val)
+        elif self.namespace.exclusive:
+            ret_val = "No available issues found assigned to you."
+        else:
+            ret_val = "No available issues found."
+
+        return ret_val
 
     def execute(self):
         """Execute this start command.
@@ -190,16 +270,7 @@ class StartCommand(BaseStartCommand, GitHubCommand):
             else:
                 exit("Unable to update issue assignee.")
         else:
-            if self.namespace.number and self.namespace.exclusive:
-                exit("No available issue #{0} found assigned to you.".format(
-                    self.namespace.number))
-            elif self.namespace.number:
-                exit("No available issue #{0} found.".format(
-                    self.namespace.number))
-            elif self.namespace.exclusive:
-                exit("No available issues found assigned to you.")
-            else:
-                exit("No available issues found.")
+            exit(self.error)
 
     def exit(self):
         """Handle start command exit.
@@ -214,7 +285,7 @@ class StartCommand(BaseStartCommand, GitHubCommand):
         ret_val = None
         available = lambda issue: issue and \
             issue.state == Issue.STATE_OPEN and \
-            not("started" in issue.labels or "finished" in issue.labels) and \
+            (self.namespace.ignore or not("started" in issue.labels or "finished" in issue.labels)) and \
             issue.pull_request is None
         number = self.namespace.number
         exclusive = self.namespace.exclusive

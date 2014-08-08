@@ -5,6 +5,7 @@ Version 0.8.4
 ~~~~~~~~~~~~~
 
 * Added remote cleanup to 'finish' command.
+* Added 'start --ignore' command argument.
 * Explicit 'exit' import for JIRA commands.
 
 Version 0.8.3
