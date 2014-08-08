@@ -25,27 +25,27 @@ Options
 Commands
 --------
 
-init
+:doc:`init </git-continuity>`
     Initialize a git repository for use with continuity.
 
     Alias: **git-continuity(1)**
 
-start
+:doc:`start </git-start>`
     Start work on a branch.
 
     Alias: **git-start(1)**
 
-review
+:doc:`review </git-review>`
     Open a GitHub pull request for branch review.
 
     Alias: **git-review(1)**
 
-finish
+:doc:`finish </git-finish>`
     Finish work on a branch.
 
     Alias: **git-finish(1)**
 
-tasks
+:doc:`tasks </git-tasks>`
     List and manage branch tasks.
 
     Alias: **git-tasks(1)**
@@ -53,12 +53,12 @@ tasks
 GitHub and JIRA Commands
 ------------------------
 
-issue
+:doc:`issue </git-issue>`
     Display issue branch information.
 
     Alias: **git-issue(1)**
 
-issues
+:doc:`issues </git-issues>`
     List open issues.
 
     Alias: **git-issues(1)**
@@ -66,12 +66,12 @@ issues
 Pivotal Commands
 ----------------
 
-backlog
+:doc:`backlog </git-backlog>`
     List unstarted backlog stories.
 
     Alias: **git-backlog(1)**
 
-story
+:doc:`story </git-story>`
     Display story branch information.
 
     Alias: **git-story(1)**
