@@ -6,7 +6,7 @@ continuity
 Synopsis
 --------
 
-| *git start* [--assignedtoyou|--myissues|--mywork] [--force] [number|key|id]
+| *git start* [--assignedtoyou|--myissues|--mywork] [--ignore] [--force] [number|key|id]
 
 Description
 -----------
@@ -27,6 +27,9 @@ Options
 
 -m, --mywork
     *Pivotal configuration only.* Only start stories owned by you.
+
+-i, --ignore
+    Ignore status/state when starting the selected issue/story.
 
 -f, --force
     Allow start from a non-integration branch, otherwise all work must start

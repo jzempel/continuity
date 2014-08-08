@@ -193,7 +193,45 @@ class StartCommand(BaseStartCommand, PivotalTrackerCommand):
                 type=int)
         parser.add_argument("-m", "--mywork", action="store_true",
                 help="only start stories owned by you")
+        parser.add_argument("-i", "--ignore", action="store_true",
+                help="ignore story state")
         super(StartCommand, self).__init__(parser, namespace)
+
+    @property
+    def error(self):
+        """Error message accessor.
+        """
+        if self.namespace.id and self.namespace.exclusive:
+            ret_val = "No estimated story #{0} found assigned to you.".format(
+                self.namespace.id)
+
+            if not self.namespace.ignore:
+                state = ','.join(self.states(True))
+                filter = "id:{0} owner:{1} state:{2} -estimate:-1".format(
+                    self.namespace.id, self.owner, state)
+
+                if self.pt.get_story(self.project, filter):
+                    ret_val = "{0}\nUse -i to ignore the state on stories assigned to you.".\
+                        format(ret_val)
+                    pass
+        elif self.namespace.id:
+            ret_val = "No estimated story #{0} found in the backlog.".format(
+                self.namespace.id)
+
+            if not self.namespace.ignore:
+                state = ','.join(self.states(True))
+                filter = "id:{0} state:{1} -estimate:-1".format(
+                    self.namespace.id, state)
+
+                if self.pt.get_story(self.project, filter):
+                    ret_val = "{0}\nUse -i to ignore story state.".format(
+                        ret_val)
+        elif self.namespace.exclusive:
+            ret_val = "No estimated stories found in my work."
+        else:
+            ret_val = "No estimated stories found in the backlog."
+
+        return ret_val
 
     def execute(self):
         """Execute this start command.
@@ -215,16 +253,7 @@ class StartCommand(BaseStartCommand, PivotalTrackerCommand):
             else:
                 exit("Unable to update story owners.")
         else:
-            if self.namespace.id and self.namespace.exclusive:
-                exit("No estimated story #{0} found assigned to you.".format(
-                    self.namespace.id))
-            elif self.namespace.id:
-                exit("No estimated story #{0} found in the backlog.".format(
-                    self.namespace.id))
-            elif self.namespace.exclusive:
-                exit("No estimated stories found in my work.")
-            else:
-                exit("No estimated stories found in the backlog.")
+            exit(self.error)
 
     def exit(self):
         """Handle start command exit.
@@ -232,28 +261,42 @@ class StartCommand(BaseStartCommand, PivotalTrackerCommand):
         puts("Aborted story branch.")
         super(StartCommand, self).exit()
 
+    @staticmethod
+    def states(ignore):
+        """Valid story state list accessor.
+
+        :param ignore: Determine whether to ignore started state.
+        """
+        if ignore:
+            ret_val = (Story.STATE_UNSTARTED, Story.STATE_STARTED,
+                Story.STATE_REJECTED)
+        else:
+            ret_val = (Story.STATE_UNSTARTED, Story.STATE_REJECTED)
+
+        return ret_val
+
     @cached_property
     def story(self):
         """Target story accessor.
         """
         story_id = self.namespace.id
         exclusive = self.namespace.exclusive
+        state = ','.join(self.states(self.namespace.ignore))
 
         if story_id and exclusive:
             puts("Retrieving story #{0} from Pivotal Tracker for {1}...".
                 format(story_id, self.owner))
-            filter = "id:{0} owner:{1} state:unstarted,rejected -estimate:-1".\
-                format(story_id, self.owner)
+            filter = "id:{0} owner:{1} state:{2} -estimate:-1".format(
+                story_id, self.owner, state)
         elif story_id:
             puts("Retrieving story #{0} from Pivotal Tracker...".format(
                 story_id))
-            filter = "id:{0} state:unstarted,rejected -estimate:-1".\
-                format(story_id)
+            filter = "id:{0} state:{1} -estimate:-1".format(story_id, state)
         elif exclusive:
             puts("Retrieving next story from Pivotal Tracker for {0}...".
                 format(self.owner))
-            filter = "owner:{0} state:unstarted,rejected -estimate:-1".\
-                format(self.owner)
+            filter = "owner:{0} state:{1} -estimate:-1".format(self.owner,
+                state)
         else:
             filter = None
 
@@ -263,9 +306,10 @@ class StartCommand(BaseStartCommand, PivotalTrackerCommand):
             puts("Retrieving next available story from Pivotal Tracker...")
             stories = self.pt.get_backlog(self.project)
             types = (Story.TYPE_FEATURE, Story.TYPE_BUG, Story.TYPE_CHORE)
-            states = (Story.STATE_UNSTARTED, Story.STATE_REJECTED)
 
             for story in stories:
+                states = self.states(self.namespace.ignore)
+
                 if story.type in types and story.state in states and \
                         (not story.owners or self.owner in story.owners):
                     if story.type != Story.TYPE_FEATURE or story.estimate:

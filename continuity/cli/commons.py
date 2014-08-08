@@ -152,25 +152,6 @@ class GitHubCommand(GitCommand):
     """Base GitHub command.
     """
 
-    def get_issues(self, **parameters):
-        """Get a list of issues, ordered by milestone.
-
-        :param parameters: Parameter keyword-arguments.
-        """
-        ret_val = []
-        milestones = self.github.get_milestones()
-
-        for milestone in milestones:
-            parameters["milestone"] = milestone.number
-            issues = self.github.get_issues(**parameters)
-            ret_val.extend(issues)
-
-        parameters["milestone"] = None
-        issues = self.github.get_issues(**parameters)
-        ret_val.extend(issues)
-
-        return ret_val
-
     @cached_property
     def github(self):
         """GitHub accessor.
@@ -178,27 +159,6 @@ class GitHubCommand(GitCommand):
         token = self.get_value("github", "oauth-token")
 
         return GitHubService(self.git, token)
-
-    @cached_property
-    def issue(self):
-        """Current branch issue accessor.
-        """
-        configuration = self.git.get_configuration("branch",
-                self.git.branch.name)
-
-        if configuration:
-            try:
-                number = configuration["issue"]
-                ret_val = self.github.get_issue(number)
-            except KeyError:
-                ret_val = None
-        else:
-            ret_val = None
-
-        if not ret_val:
-            exit("fatal: Not an issue branch.")
-
-        return ret_val
 
 
 class CommitCommand(BaseCommand):

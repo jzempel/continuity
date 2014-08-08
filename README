@@ -79,3 +79,7 @@ backlog (aliased by init as git-backlog)
 
 story (aliased by init as git-story)
     Display story branch information.
+
+
+Check out the documentation (http://pythonhosted.org/continuity) for more
+details.
