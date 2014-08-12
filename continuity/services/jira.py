@@ -104,7 +104,9 @@ class Issue(IDObject):
     def priority(self):
         """Issue priority accessor.
         """
-        return self.fields.get("priority", {}).get("name")
+        priority = self.fields.get("priority")
+
+        return priority.get("name") if priority else None
 
     @property
     def project(self):

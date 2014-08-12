@@ -17,6 +17,11 @@ from git.repo.base import Repo
 from os import environ, utime
 from os.path import basename, exists, join
 from sys import exc_info
+import re
+
+
+PATTERN_SUBSECTION = re.compile(r"^(?P<section>.+)\s+\"(?P<subsection>.+)\"$",
+        re.U)
 
 
 class GitException(ServiceException):
@@ -85,6 +90,24 @@ class GitService(object):
 
         return ret_val
 
+    def configuration_dict(self):
+        """Get the git configuration as a dictionary.
+        """
+        ret_val = {}
+        reader = self.repo.config_reader()
+
+        for section in reader.sections():
+            for name, value in reader.items(section):
+                match = re.match(PATTERN_SUBSECTION, section)
+
+                if match:
+                    ret_val.setdefault(match.group("section"), {}).setdefault(
+                        match.group("subsection"), {})[name] = value
+                else:
+                    ret_val.setdefault(section, {})[name] = value
+
+        return ret_val
+
     def create_branch(self, name, push=True):
         """Create the given branch name.
 
@@ -117,6 +140,12 @@ class GitService(object):
             raise GitException(error.stderror, error.status), None, traceback
 
         return ret_val
+
+    @property
+    def editor(self):
+        """Get the configured git editor.
+        """
+        return self.execute("var", "GIT_EDITOR")
 
     def execute(self, *args):
         """Execute the given git command.

@@ -12,10 +12,11 @@
 from .commons import (FinishCommand as BaseFinishCommand, GitCommand,
         ReviewCommand as BaseReviewCommand, StartCommand as BaseStartCommand,
         TasksCommand as BaseTasksCommand)
-from .utils import less, prompt
+from .utils import edit, less, prompt, render
 from clint.textui import colored, puts
 from continuity.services.jira import Issue, JiraException, JiraService
 from continuity.services.utils import cached_property
+from os.path import expanduser
 from StringIO import StringIO
 from sys import exit
 
@@ -302,13 +303,32 @@ class ReviewCommand(BaseReviewCommand, JiraCommand):
         :param branch: The base branch the pull request is for.
         """
         title = prompt("Pull request title", self.git.branch.name)
-        description = prompt("Pull request description (optional)", '')
         url = self.jira.get_issue_url(self.issue)
+        template = self.git.get_configuration("jira", "template").get(
+            "pr-description")
 
-        if description:
-            description = "{0}\n\n{1}".format(url, description)
+        if template:
+            puts("Pull request description...")
+            self.issue.url = url
+            context = self.git.configuration_dict()
+            context["git"] = self.git
+            context["issue"] = self.issue
+
+            try:
+                description = render(file(expanduser(template)), **context)
+            except IOError:
+                message = "Could not read jira.template.pr-description file '{0}'.".\
+                    format(template)
+                exit(message)
+
+            edit(self.git, description)
         else:
-            description = url
+            description = prompt("Pull request description (optional)", '')
+
+            if description:
+                description = "{0}\n\n{1}".format(url, description)
+            else:
+                description = url
 
         transition = self.get_value("jira", "review-transition")
 
