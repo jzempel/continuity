@@ -9,7 +9,7 @@
     :license: BSD, see LICENSE for more details.
 """
 
-from .utils import confirm, prompt
+from .utils import confirm, prompt, render
 from argparse import REMAINDER, SUPPRESS
 from clint.textui import colored, indent, puts, puts_err
 from continuity.services.commons import ServiceException
@@ -115,6 +115,26 @@ class GitCommand(BaseCommand):
         if not ret_val:
             message = "Missing '{0}' git configuration.".format(name)
             exit(message)
+
+        return ret_val
+
+    def get_template(self, name, default=None, **kwargs):
+        """Get a continuity template.
+
+        :param name: The name of the template to render.
+        :param default: The value to render if the template does not exist.
+        :param **kwargs: Template rendering context keyword-arguments.
+        """
+        template = self.git.get_configuration("continuity", "template").get(
+            name)
+
+        if template:
+            context = self.git.configuration_dict()
+            context["git"] = self.git
+            context.update(kwargs)
+            ret_val = render(template, **context)
+        else:
+            ret_val = default
 
         return ret_val
 

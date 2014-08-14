@@ -14,7 +14,7 @@ from curses.ascii import ctrl, CR, EOT, ETX, isctrl, LF
 from getch.getch import getch
 from getpass import getpass
 from jinja2 import Environment, FileSystemLoader, Template
-from os.path import basename, dirname
+from os.path import basename, dirname, expanduser
 from pydoc import pipepager
 from shlex import split
 from StringIO import StringIO
@@ -47,15 +47,16 @@ def confirm(message, default=False):
     return ret_val
 
 
-def edit(git, default=None):
+def edit(git, default=None, suffix=''):
     """Prompt for edit.
 
     :param git: Used to determine the editor.
     :param default: Default `None`. The default value.
+    :param suffix: Default ''. Temporary file suffix.
     """
     ret_val = None
 
-    with NamedTemporaryFile() as temp_file:
+    with NamedTemporaryFile(suffix=suffix) as temp_file:
         if default:
             temp_file.write(default)
             temp_file.flush()
@@ -68,8 +69,8 @@ def edit(git, default=None):
         except CalledProcessError:
             exit("Unable to start editor '{0}'".format(git.editor))
 
-        temp_file.seek(0)
-        ret_val = temp_file.read().strip()
+        with file(temp_file.name) as f:
+            ret_val = f.read().strip()
 
     return ret_val
 
@@ -139,14 +140,15 @@ def prompt(message, default=None, characters=None, echo=True):
 def render(template, **context):
     """Render the given template.
 
-    :param template: The template file or string to render.
+    :param template: The template file name or string to render.
     :param **context: Context keyword-arguments.
     """
-    if isinstance(template, basestring):
-        template = Template(template)
-    else:
-        loader = FileSystemLoader(dirname(template.name))
+    try:
+        template_file = file(expanduser(template))
+        loader = FileSystemLoader(dirname(template_file.name))
         environment = Environment(loader=loader)
-        template = environment.get_template(basename(template.name))
+        template = environment.get_template(basename(template_file.name))
+    except IOError:
+        template = Template(template)
 
     return template.render(context)
