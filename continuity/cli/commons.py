@@ -129,7 +129,7 @@ class GitCommand(BaseCommand):
             name)
 
         if template:
-            context = self.git.configuration_dict()
+            context = self.git.configuration
             context["git"] = self.git
             context.update(kwargs)
             ret_val = render(template, **context)

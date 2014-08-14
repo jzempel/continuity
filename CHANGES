@@ -5,6 +5,7 @@ Version 0.9
 ~~~~~~~~~~~
 
 * Added templates.
+* Updated git service to handle $XDG_CONFIG_HOME configuration file.
 
 Version 0.8.4
 ~~~~~~~~~~~~~
