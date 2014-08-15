@@ -13,7 +13,8 @@ from clint.textui import puts
 from curses.ascii import ctrl, CR, EOT, ETX, isctrl, LF
 from getch.getch import getch
 from getpass import getpass
-from jinja2 import Environment, FileSystemLoader, Template
+from jinja2 import (Environment, FileSystemLoader, Template, TemplateError,
+        TemplateSyntaxError, Undefined as BaseUndefined)
 from os.path import basename, dirname, expanduser
 from pydoc import pipepager
 from shlex import split
@@ -143,12 +144,36 @@ def render(template, **context):
     :param template: The template file name or string to render.
     :param **context: Context keyword-arguments.
     """
+    class Undefined(BaseUndefined):
+        def _fail_with_undefined_error(self, *args, **kwargs):
+            try:
+                super(Undefined, self)._fail_with_undefined_error(*args,
+                        **kwargs)
+            except Exception, error:
+                return "{{{{ {0} }}}}".format(error)
+
     try:
-        template_file = file(expanduser(template))
-        loader = FileSystemLoader(dirname(template_file.name))
-        environment = Environment(loader=loader)
-        template = environment.get_template(basename(template_file.name))
-    except IOError:
-        template = Template(template)
+        try:
+            template_file = file(expanduser(template))
+            loader = FileSystemLoader(dirname(template_file.name))
+            environment = Environment(loader=loader, undefined=Undefined)
+
+            try:
+                template = environment.get_template(basename(
+                    template_file.name))
+            except TemplateSyntaxError, error:
+                message = "Template {0}:{1}, {2}{3}".format(error.filename,
+                    error.lineno, error.message[:1].lower(), error.message[1:])
+                exit(message)
+        except IOError:
+            try:
+                template = Template(template, undefined=Undefined)
+            except TemplateSyntaxError, error:
+                message = "Template \"{0}\" {1}{2}".format(template,
+                    error.message[:1].lower(), error.message[1:])
+                exit(message)
+    except TemplateError, error:
+        message = "Template error: {0}".format(error.message)
+        exit(message)
 
     return template.render(context)

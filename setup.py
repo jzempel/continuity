@@ -17,6 +17,7 @@ import continuity
 install_requires = [
     "clint",
     "GitPython",
+    "Jinja2",
     "py-getch",
     "python-dateutil < 2.0",
     "requests",

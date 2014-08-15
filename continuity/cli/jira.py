@@ -13,7 +13,7 @@ from .commons import (FinishCommand as BaseFinishCommand, GitCommand,
         ReviewCommand as BaseReviewCommand, StartCommand as BaseStartCommand,
         TasksCommand as BaseTasksCommand)
 from .utils import edit, less, prompt
-from clint.textui import colored, puts
+from clint.textui import colored, indent, puts
 from continuity.services.jira import Issue, JiraException, JiraService
 from continuity.services.utils import cached_property
 from StringIO import StringIO
@@ -306,10 +306,15 @@ class ReviewCommand(BaseReviewCommand, JiraCommand):
         default = self.get_template("pr-title", default=self.git.branch.name,
                 issue=self.issue)
         title = prompt("Pull request title", default)
-        puts("Pull request description...")
+        puts("Pull request description (optional):")
         default = self.get_template("pr-description", default=url,
                 issue=self.issue)
         description = edit(self.git, default, suffix=".markdown")
+
+        if description:
+            with indent(3, quote=" >"):
+                puts(description)
+
         transition = self.get_value("jira", "review-transition")
 
         if transition:

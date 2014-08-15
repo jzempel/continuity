@@ -366,7 +366,11 @@ class GitHubRequestException(GitHubException):
             if isinstance(error, RequestException):
                 if hasattr(error, "response"):
                     self.response = error.response
-                    self.json = self.response.json()
+
+                    if self.response is not None:
+                        self.json = self.response.json()
+                    else:
+                        self.json = {}
 
 
 class GitHubService(RemoteService):
