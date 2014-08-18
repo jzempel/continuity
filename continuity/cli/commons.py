@@ -658,7 +658,7 @@ class StartCommand(GitCommand):
             ret_val = '-'.join(name.split())
             prefix = self.get_template("branch-prefix")
 
-            if prefix:
+            if prefix and not ret_val.startswith(prefix):
                 ret_val = "{0}{1}".format(prefix, ret_val)
 
             try:
