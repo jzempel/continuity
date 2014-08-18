@@ -160,7 +160,7 @@ class GitService(object):
         except GitCommandError, error:
             traceback = exc_info()[2]
 
-            raise GitException(error.stderror, error.status), None, traceback
+            raise GitException(error.stderr, error.status), None, traceback
 
         return ret_val
 
@@ -186,8 +186,10 @@ class GitService(object):
         """
         try:
             ret_val = self.execute("checkout", str(name))
-        except GitCommandError:
-            raise GitException("Invalid branch"), None, exc_info()[2]
+        except GitCommandError, error:
+            traceback = exc_info()[2]
+
+            raise GitException(error.stderr, error.status), None, traceback
 
         return ret_val
 
@@ -236,7 +238,7 @@ class GitService(object):
         except GitCommandError, error:
             traceback = exc_info()[2]
 
-            raise GitException(error.stderror, error.status), None, traceback
+            raise GitException(error.stderr, error.status), None, traceback
 
         return ret_val
 
