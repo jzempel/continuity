@@ -125,7 +125,9 @@ class GitCommand(BaseCommand):
         :param default: The value to render if the template does not exist.
         :param **kwargs: Template rendering context keyword-arguments.
         """
-        template = self.git.get_configuration("continuity", "template").get(
+        continuity = self.git.get_configuration("continuity")
+        tracker = continuity["tracker"]
+        template = self.git.get_configuration(tracker, "template").get(
             name)
 
         if template:
@@ -654,6 +656,10 @@ class StartCommand(GitCommand):
         if self.namespace.force or branch == self.branch.name:
             name = prompt(MESSAGES["git_branch"])
             ret_val = '-'.join(name.split())
+            prefix = self.get_template("branch-prefix")
+
+            if prefix:
+                ret_val = "{0}{1}".format(prefix, ret_val)
 
             try:
                 self.git.create_branch(ret_val)

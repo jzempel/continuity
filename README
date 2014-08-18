@@ -55,6 +55,9 @@ init
 start (aliased by init as git-start)
     Start a branch linked to an issue/story.
 
+commit
+    Augments issue/story commit messages with a pre-commit-msg hook.
+
 review (aliased by init as git-review)
     Open a GitHub pull request for issue/story branch review.
 
