@@ -36,7 +36,8 @@ MESSAGES = {
     "github_user": "GitHub user",
     "jira_password": "JIRA password",
     "jira_project_key": "JIRA project key",
-    "jira_transition": "Transition workflow on review?",
+    "jira_transition_review": "Transition workflow on review?",
+    "jira_transition_finish": "Transition workflow on finish?",
     "jira_url": "JIRA base url",
     "jira_user": "JIRA username",
     "pivotal_api_token": "Pivotal Tracker API token",
@@ -517,12 +518,17 @@ class InitCommand(GitCommand):
             exit("No JIRA projects found.")
 
         default = configuration.get("review-transition", False)
-        transition = confirm(MESSAGES["jira_transition"], default=default)
+        review_transition = confirm(MESSAGES["jira_transition_review"],
+                default=default)
+        default = configuration.get("finish-transition", True)
+        finish_transition = confirm(MESSAGES["jira_transition_finish"],
+                default=default)
 
         return {
             "auth-token": token,
+            "finish-transition": finish_transition,
             "project-key": project_key,
-            "review-transition": transition,
+            "review-transition": review_transition,
             "url": url,
             "user": user
         }

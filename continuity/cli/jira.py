@@ -183,8 +183,13 @@ class FinishCommand(BaseFinishCommand, JiraCommand):
         finally:
             self.git.get_branch(self.branch)
 
-        (self.transition, self.resolution) = self.get_transition(
-            Issue.STATUS_COMPLETE)
+        transition = self.get_value("jira", "finish-transition")
+
+        if transition:
+            (self.transition, self.resolution) = self.get_transition(
+                Issue.STATUS_COMPLETE)
+        else:
+            self.transition = None
 
         if self.transition:
             message = "{0} #{1}".format(self.issue.key, self.transition.slug)
