@@ -7,6 +7,7 @@ Version 0.9
 * Added templates.
 * Updated git service to handle $XDG_CONFIG_HOME configuration file.
 * Added option for JIRA finish workflow transition.
+* Default `review` pull request title to the issue/story name.
 
 Version 0.8.4
 ~~~~~~~~~~~~~

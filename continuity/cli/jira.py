@@ -308,7 +308,7 @@ class ReviewCommand(BaseReviewCommand, JiraCommand):
         """
         url = self.jira.get_issue_url(self.issue)
         self.issue.url = url
-        default = self.get_template("pr-title", default=self.git.branch.name,
+        default = self.get_template("pr-title", default=self.issue.summary,
                 issue=self.issue)
         title = prompt("Pull request title", default)
         puts("Pull request description (optional):")
