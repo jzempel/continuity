@@ -121,6 +121,9 @@ class GitService(object):
 
         for section in reader.sections():
             for name, value in reader.items(section):
+                if value.startswith('"') and value.endswith('"'):
+                    value = value[1:-1]
+
                 match = re.match(PATTERN_SUBSECTION, section)
 
                 if match:

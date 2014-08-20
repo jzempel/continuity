@@ -171,7 +171,7 @@ class ReviewCommand(BaseReviewCommand, PivotalTrackerCommand):
         :param branch: The base branch the pull request is for.
         """
         default = self.get_template("pr-title", default=self.story.name,
-                issue=self.story)
+                story=self.story)
         title = prompt("Pull request title", default)
         puts("Pull request description (optional):")
         default = self.get_template("pr-description", default=self.story.url,
