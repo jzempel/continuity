@@ -12,8 +12,8 @@
 from .commons import (FinishCommand as BaseFinishCommand, GitCommand,
         ReviewCommand as BaseReviewCommand, StartCommand as BaseStartCommand,
         TasksCommand as BaseTasksCommand)
-from .utils import less, prompt
-from clint.textui import colored, puts
+from .utils import edit, less, prompt
+from clint.textui import colored, indent, puts
 from continuity.services.pt import PivotalTrackerService, Story
 from continuity.services.utils import cached_property
 from StringIO import StringIO
@@ -170,13 +170,17 @@ class ReviewCommand(BaseReviewCommand, PivotalTrackerCommand):
 
         :param branch: The base branch the pull request is for.
         """
-        title = prompt("Pull request title", self.git.branch.name)
-        description = prompt("Pull request description (optional)", '')
+        default = self.get_template("pr-title", default=self.story.name,
+                story=self.story)
+        title = prompt("Pull request title", default)
+        puts("Pull request description (optional):")
+        default = self.get_template("pr-description", default=self.story.url,
+                story=self.story)
+        description = edit(self.git, default, suffix=".markdown")
 
         if description:
-            description = "{0}\n\n{1}".format(self.story.url, description)
-        else:
-            description = self.story.url
+            with indent(3, quote=" >"):
+                puts(description)
 
         return self.github.create_pull_request(title, description, branch)
 

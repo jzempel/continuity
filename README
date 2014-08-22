@@ -1,6 +1,6 @@
 continuity: Continuous dev flow via GitHub Issues, Pivotal Tracker, or JIRA.
 
-Inspired by GitHub Flow (http://j.mp/github-flow)
+Inspired by GitHub Flow (https://guides.github.com/introduction/flow)
 
 
 The Concept
@@ -54,6 +54,9 @@ init
 
 start (aliased by init as git-start)
     Start a branch linked to an issue/story.
+
+commit
+    Augments issue/story commit messages with a pre-commit-msg hook.
 
 review (aliased by init as git-review)
     Open a GitHub pull request for issue/story branch review.

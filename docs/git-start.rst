@@ -13,7 +13,7 @@ Description
 
 This command identifies the issue or story to start, verifies that it is
 assigned to you, creates a new git branch, and marks the issue or story as
-"started".
+"started". Use a template to configure a prefix for new branch names.
 
 Options
 -------
@@ -39,3 +39,8 @@ number|key|id
     Start the specified GitHub issue *number*, JIRA issue *key*, or Pivotal
     Tracker story *id*. If not specified, continuity will attempt to start work
     on the next available issue/story.
+
+See Also
+--------
+
+<`<https://github.com/jzempel/continuity/wiki/Templates>`_>

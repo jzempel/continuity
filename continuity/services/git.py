@@ -11,12 +11,16 @@
 
 from __future__ import absolute_import
 from .commons import ServiceException
-from ConfigParser import NoSectionError
 from git.exc import GitCommandError, InvalidGitRepositoryError, NoSuchPathError
 from git.repo.base import Repo
 from os import environ, utime
-from os.path import basename, exists, join
+from os.path import basename, exists, expanduser, join
 from sys import exc_info
+import re
+
+
+PATTERN_SUBSECTION = re.compile(r"^(?P<section>.+)\s+\"(?P<subsection>.+)\"$",
+        re.U)
 
 
 class GitException(ServiceException):
@@ -29,6 +33,29 @@ class GitException(ServiceException):
     def __init__(self, message, status=None):
         super(GitException, self).__init__(message)
         self.status = status
+
+
+class GitRepository(Repo):
+    """Git repository.
+    """
+
+    config_level = ("system", "user", "global", "repository")
+
+    def _get_config_path(self, config_level):
+        """Override to support the "user" configuration level until
+           `https://github.com/gitpython-developers/GitPython/issues/160` is
+           fixed.
+
+        :param config_level: The configuration level to get a path for.
+        """
+        if config_level == "user":
+            config_home = environ.get("XDG_CONFIG_HOME") or join(environ.get(
+                "HOME", '~'), ".config")
+            ret_val = expanduser(join(config_home, "git", "config"))
+        else:
+            ret_val = super(GitRepository, self)._get_config_path(config_level)
+
+        return ret_val
 
 
 class GitService(object):
@@ -57,7 +84,7 @@ class GitService(object):
                 self.execute("add", basename(name))
                 self.execute("commit", "-m", "Initial commit")
             else:
-                self.repo = Repo(path)
+                self.repo = GitRepository(path)
 
             if origin:
                 try:
@@ -82,6 +109,28 @@ class GitService(object):
             ret_val = None
         else:
             ret_val = head.ref
+
+        return ret_val
+
+    @property
+    def configuration(self):
+        """Configuration dictionary accessor.
+        """
+        ret_val = {}
+        reader = self.repo.config_reader()
+
+        for section in reader.sections():
+            for name, value in reader.items(section):
+                if value.startswith('"') and value.endswith('"'):
+                    value = value[1:-1]
+
+                match = re.match(PATTERN_SUBSECTION, section)
+
+                if match:
+                    ret_val.setdefault(match.group("section"), {}).setdefault(
+                        match.group("subsection"), {})[name] = value
+                else:
+                    ret_val.setdefault(section, {})[name] = value
 
         return ret_val
 
@@ -114,9 +163,15 @@ class GitService(object):
         except GitCommandError, error:
             traceback = exc_info()[2]
 
-            raise GitException(error.stderror, error.status), None, traceback
+            raise GitException(error.stderr, error.status), None, traceback
 
         return ret_val
+
+    @property
+    def editor(self):
+        """Get the configured git editor.
+        """
+        return self.execute("var", "GIT_EDITOR")
 
     def execute(self, *args):
         """Execute the given git command.
@@ -134,8 +189,10 @@ class GitService(object):
         """
         try:
             ret_val = self.execute("checkout", str(name))
-        except GitCommandError:
-            raise GitException("Invalid branch"), None, exc_info()[2]
+        except GitCommandError, error:
+            traceback = exc_info()[2]
+
+            raise GitException(error.stderr, error.status), None, traceback
 
         return ret_val
 
@@ -145,22 +202,18 @@ class GitService(object):
         :param section: The git configuration section to retrieve.
         :param subsection: Default `None`. Optional subsection.
         """
-        ret_val = {}
-        reader = self.repo.config_reader()
+        ret_val = self.configuration.get(section, {})
 
         if subsection:
-            section = '{0} "{1}"'.format(section, subsection)
+            ret_val = ret_val.get(subsection, {})
 
-        try:
-            for name, value in reader.items(section):
-                if value == "true":
-                    value = True
-                elif value == "false":
-                    value = False
+        for name, value in ret_val.items():
+            if value == "true":
+                value = True
+            elif value == "false":
+                value = False
 
-                ret_val[name] = value
-        except NoSectionError:
-            pass
+            ret_val[name] = value
 
         return ret_val
 
@@ -188,7 +241,7 @@ class GitService(object):
         except GitCommandError, error:
             traceback = exc_info()[2]
 
-            raise GitException(error.stderror, error.status), None, traceback
+            raise GitException(error.stderr, error.status), None, traceback
 
         return ret_val
 

@@ -12,8 +12,8 @@
 from .commons import (FinishCommand as BaseFinishCommand, GitCommand,
         ReviewCommand as BaseReviewCommand, StartCommand as BaseStartCommand,
         TasksCommand as BaseTasksCommand)
-from .utils import less, prompt
-from clint.textui import colored, puts
+from .utils import edit, less, prompt
+from clint.textui import colored, indent, puts
 from continuity.services.jira import Issue, JiraException, JiraService
 from continuity.services.utils import cached_property
 from StringIO import StringIO
@@ -183,8 +183,13 @@ class FinishCommand(BaseFinishCommand, JiraCommand):
         finally:
             self.git.get_branch(self.branch)
 
-        (self.transition, self.resolution) = self.get_transition(
-            Issue.STATUS_COMPLETE)
+        transition = self.get_value("jira", "finish-transition")
+
+        if transition:
+            (self.transition, self.resolution) = self.get_transition(
+                Issue.STATUS_COMPLETE)
+        else:
+            self.transition = None
 
         if self.transition:
             message = "{0} #{1}".format(self.issue.key, self.transition.slug)
@@ -301,14 +306,19 @@ class ReviewCommand(BaseReviewCommand, JiraCommand):
 
         :param branch: The base branch the pull request is for.
         """
-        title = prompt("Pull request title", self.git.branch.name)
-        description = prompt("Pull request description (optional)", '')
         url = self.jira.get_issue_url(self.issue)
+        self.issue.url = url
+        default = self.get_template("pr-title", default=self.issue.summary,
+                issue=self.issue)
+        title = prompt("Pull request title", default)
+        puts("Pull request description (optional):")
+        default = self.get_template("pr-description", default=url,
+                issue=self.issue)
+        description = edit(self.git, default, suffix=".markdown")
 
         if description:
-            description = "{0}\n\n{1}".format(url, description)
-        else:
-            description = url
+            with indent(3, quote=" >"):
+                puts(description)
 
         transition = self.get_value("jira", "review-transition")
 

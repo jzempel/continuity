@@ -101,10 +101,18 @@ class Issue(IDObject):
         return self.data.get("key")
 
     @property
+    def labels(self):
+        """Issue labels accessor.
+        """
+        return self.fields.get("labels", [])
+
+    @property
     def priority(self):
         """Issue priority accessor.
         """
-        return self.fields.get("priority", {}).get("name")
+        priority = self.fields.get("priority")
+
+        return priority.get("name") if priority else None
 
     @property
     def project(self):
@@ -388,9 +396,9 @@ class JiraService(RemoteService):
         :param status: Default `None`. A status to filter by.
         """
         ret_val = []
-        resource = "issue/{0}/transitions?expand=transitions.fields".format(
-            issue.key)
-        response = self._request("get", resource)
+        resource = "issue/{0}/transitions".format(issue.key)
+        params = {"expand": "transitions.fields"}
+        response = self._request("get", resource, params=params)
         transitions = response.get("transitions")
 
         for transition in transitions:

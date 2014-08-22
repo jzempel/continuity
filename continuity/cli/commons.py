@@ -9,7 +9,7 @@
     :license: BSD, see LICENSE for more details.
 """
 
-from .utils import confirm, prompt
+from .utils import confirm, prompt, render
 from argparse import REMAINDER, SUPPRESS
 from clint.textui import colored, indent, puts, puts_err
 from continuity.services.commons import ServiceException
@@ -36,7 +36,8 @@ MESSAGES = {
     "github_user": "GitHub user",
     "jira_password": "JIRA password",
     "jira_project_key": "JIRA project key",
-    "jira_transition": "Transition workflow on review?",
+    "jira_transition_review": "Transition workflow on review?",
+    "jira_transition_finish": "Transition workflow on finish?",
     "jira_url": "JIRA base url",
     "jira_user": "JIRA username",
     "pivotal_api_token": "Pivotal Tracker API token",
@@ -115,6 +116,28 @@ class GitCommand(BaseCommand):
         if not ret_val:
             message = "Missing '{0}' git configuration.".format(name)
             exit(message)
+
+        return ret_val
+
+    def get_template(self, name, default=None, **kwargs):
+        """Get a continuity template.
+
+        :param name: The name of the template to render.
+        :param default: The value to render if the template does not exist.
+        :param **kwargs: Template rendering context keyword-arguments.
+        """
+        continuity = self.git.get_configuration("continuity")
+        tracker = continuity["tracker"]
+        template = self.git.get_configuration(tracker, "template").get(
+            name)
+
+        if template:
+            context = self.git.configuration
+            context["git"] = self.git
+            context.update(kwargs)
+            ret_val = render(template, **context)
+        else:
+            ret_val = default
 
         return ret_val
 
@@ -495,12 +518,17 @@ class InitCommand(GitCommand):
             exit("No JIRA projects found.")
 
         default = configuration.get("review-transition", False)
-        transition = confirm(MESSAGES["jira_transition"], default=default)
+        review_transition = confirm(MESSAGES["jira_transition_review"],
+                default=default)
+        default = configuration.get("finish-transition", True)
+        finish_transition = confirm(MESSAGES["jira_transition_finish"],
+                default=default)
 
         return {
             "auth-token": token,
+            "finish-transition": finish_transition,
             "project-key": project_key,
-            "review-transition": transition,
+            "review-transition": review_transition,
             "url": url,
             "user": user
         }
@@ -634,6 +662,10 @@ class StartCommand(GitCommand):
         if self.namespace.force or branch == self.branch.name:
             name = prompt(MESSAGES["git_branch"])
             ret_val = '-'.join(name.split())
+            prefix = self.get_template("branch-prefix")
+
+            if prefix and not ret_val.startswith(prefix):
+                ret_val = "{0}{1}".format(prefix, ret_val)
 
             try:
                 self.git.create_branch(ret_val)
