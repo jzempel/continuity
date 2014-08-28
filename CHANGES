@@ -1,6 +1,11 @@
 Changelog
 ---------
 
+Version 0.9.1
+~~~~~~~~~~~~~
+
+* Removed remote cleanup on 'finish'.
+
 Version 0.9
 ~~~~~~~~~~~
 

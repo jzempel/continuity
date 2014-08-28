@@ -304,15 +304,6 @@ class FinishCommand(GitHubCommand):
             message = "error: Attempted finish from non-integration branch; switch to '{0}'."  # NOQA
             exit(message.format(branch))
 
-    def finalize(self):
-        """Finalize this finish command.
-        """
-        try:
-            self.github.remove_branch(self.namespace.branch)
-            self.git.prune_branches()
-        except GitHubException:
-            pass
-
 
 class InitCommand(GitCommand):
     """Initialize a git repository for use with continuity.
