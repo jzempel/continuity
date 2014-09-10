@@ -380,7 +380,7 @@ class GitHubService(RemoteService):
     :param token: GitHub OAuth token.
     """
 
-    expression = r"^.+github\.com[/:](?P<repository>\w+/[\w\.]+)\.git$"
+    expression = r"^.+github\.com[/:](?P<repository>[\w-]+/[\w\.-]+)\.git$"
     PATTERN_REPOSITORY = re.compile(expression, re.U)
     expression = r"^([-*+]|\d+\.)\s+\[(?P<checked>[ x])\]\s+(?P<description>\S.*)$"  # NOQA
     PATTERN_TASK = re.compile(expression, re.M | re.U)
@@ -404,11 +404,17 @@ class GitHubService(RemoteService):
         :param kwargs: Request keyword-arguments.
         """
         match = re.match(self.PATTERN_REPOSITORY, self.git.remote.url)
-        repository = match.group("repository")
-        path = "repos/{0}/{1}".format(repository, resource)
-        headers = kwargs.get("headers", {})
-        headers["Authorization"] = "token {0}".format(self.token)
-        kwargs["headers"] = headers
+
+        if match:
+            repository = match.group("repository")
+            path = "repos/{0}/{1}".format(repository, resource)
+            headers = kwargs.get("headers", {})
+            headers["Authorization"] = "token {0}".format(self.token)
+            kwargs["headers"] = headers
+        else:
+            message = "Unexpected remote URL: {0}".format(self.git.remote.url)
+
+            raise GitHubException(message)
 
         return self._request(method, path, **kwargs)
 
