@@ -360,10 +360,6 @@ class StartCommand(BaseStartCommand, JiraCommand):
     def error(self):
         """Error message accessor.
         """
-        if self.namespace.key and not self.namespace.key.startswith(
-                self.project.key):
-            ret_val = "No issue {0} found in project {1}.".format(
-                self.namespace.key, self.project)
         if self.namespace.key and self.namespace.exclusive:
             ret_val = "No available issue {0} found assigned to you.".\
                 format(self.namespace.key)
@@ -445,7 +441,6 @@ class StartCommand(BaseStartCommand, JiraCommand):
             puts("Retrieving issue {0} from JIRA for {1}...".format(key,
                 self.user))
             parameters = {
-                "project": self.project.key,
                 "statusCategory": status,
                 "issue": key,
                 "assignee": str(self.user)
@@ -455,7 +450,6 @@ class StartCommand(BaseStartCommand, JiraCommand):
         elif key:
             puts("Retrieving issue {0} from JIRA...".format(key))
             parameters = {
-                "project": self.project.key,
                 "statusCategory": status,
                 "issue": key
             }
