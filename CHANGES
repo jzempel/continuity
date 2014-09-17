@@ -1,6 +1,12 @@
 Changelog
 ---------
 
+Version 0.9.4
+~~~~~~~~~~~~~
+
+* Disabled remote service warnings.
+* Freeze installation dependencies.
+
 Version 0.9.3
 ~~~~~~~~~~~~~
 

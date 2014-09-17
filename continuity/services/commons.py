@@ -11,6 +11,7 @@
 
 from json import dumps
 from requests import codes, request
+from requests.packages.urllib3 import disable_warnings
 from urlparse import urljoin
 
 
@@ -52,6 +53,8 @@ class RemoteService(object):
 
     :param url: Remote service API URL.
     """
+
+    disable_warnings()
 
     def __init__(self, url):
         self.url = url
