@@ -43,16 +43,14 @@ clean:
 	rm -rf docs/_build
 	rm -f logdict*.final.*.log
 
-release: docs/_build
+release:
 	git tag $(VERSION)
 	git push --tags
-	$(PYTHON) setup.py sdist upload
-	openssl sha1 dist/continuity-$(VERSION).tar.gz
-	$(PYTHON) setup.py upload_sphinx
-
-docs/_build:
 	$(PYTHON) setup.py develop
 	$(PYTHON) setup.py build_sphinx
+	$(PYTHON) setup.py upload_sphinx
+	$(PYTHON) setup.py sdist upload
+	openssl sha1 dist/continuity-$(VERSION).tar.gz
 
 $(BUILD)/dist/$(EXENAME): export PYTHONPATH = $(PYTHON_PATH)
 $(BUILD)/dist/$(EXENAME): export VERSIONER_PYTHON_PREFER_32_BIT = yes
