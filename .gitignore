@@ -1,4 +1,5 @@
 .*
+*.egg
 *.egg-info
 *.log
 *.py[co]
