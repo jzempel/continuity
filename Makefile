@@ -6,11 +6,12 @@ version = 2.1
 BUILD = build
 INSTALLER = pyinstaller-$(version)
 PYTHON = python
+VERSION = `$(PYTHON) -c "import continuity; print continuity.__version__"`
 
 override EXENAME = continuity
 override PYTHON_PATH = $(BUILD)/lib/python
 
-.PHONY: install uninstall clean
+.PHONY: install uninstall clean release
 
 install: $(BUILD)/dist/$(EXENAME)
 	mkdir -p $(DESTDIR)$(bindir)/
@@ -41,6 +42,17 @@ clean:
 	rm -rf dist
 	rm -rf docs/_build
 	rm -f logdict*.final.*.log
+
+release: docs/_build
+	git tag $(VERSION)
+	git push --tags
+	$(PYTHON) setup.py sdist upload
+	openssl sha1 dist/continuity-$(VERSION).tar.gz
+	$(PYTHON) setup.py upload_sphinx
+
+docs/_build:
+	$(PYTHON) setup.py develop
+	$(PYTHON) setup.py build_sphinx
 
 $(BUILD)/dist/$(EXENAME): export PYTHONPATH = $(PYTHON_PATH)
 $(BUILD)/dist/$(EXENAME): export VERSIONER_PYTHON_PREFER_32_BIT = yes
