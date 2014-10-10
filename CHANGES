@@ -1,6 +1,11 @@
 Changelog
 ---------
 
+Version 0.9.5
+~~~~~~~~~~~~~
+
+* Updated to handle non-admin Pivotal Tracker 'init'.
+
 Version 0.9.4
 ~~~~~~~~~~~~~
 

@@ -354,12 +354,14 @@ class InitCommand(GitCommand):
         if self.pivotal:
             github = GitHubService(self.git, self.github["oauth-token"])
             hooks = github.get_hooks()
-            token = hooks.get("pivotaltracker", {}).get("config", {}).\
-                get("token")
 
-            if not token:
-                token = self.pivotal["api-token"]
-                github.create_hook("pivotaltracker", token=token)
+            if hooks is not None:
+                token = hooks.get("pivotaltracker", {}).get("config", {}).\
+                    get("token")
+
+                if not token:
+                    token = self.pivotal["api-token"]
+                    github.create_hook("pivotaltracker", token=token)
 
         filename = "{0}/hooks/prepare-commit-msg".format(self.git.repo.git_dir)
 
