@@ -594,12 +594,16 @@ class GitHubService(RemoteService):
         """Get hooks.
         """
         ret_val = {}
-        hooks = self._repo_request("get", "hooks")
 
-        for hook in hooks:
-            name = hook["name"]
-            del hook["name"]
-            ret_val[name] = hook
+        try:
+            hooks = self._repo_request("get", "hooks")
+
+            for hook in hooks:
+                name = hook["name"]
+                del hook["name"]
+                ret_val[name] = hook
+        except GitHubException:
+            ret_val = None
 
         return ret_val
 
