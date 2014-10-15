@@ -5,6 +5,7 @@ Version 0.9.6
 ~~~~~~~~~~~~~
 
 * Updated to transition based on JIRA status key.
+* Fixed JIRA task transitions.
 
 Version 0.9.5
 ~~~~~~~~~~~~~

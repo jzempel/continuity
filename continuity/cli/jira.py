@@ -497,6 +497,22 @@ class TasksCommand(BaseTasksCommand, JiraCommand):
         """
         return self.issue.tasks
 
+    def _get_transition(self, task, status):
+        """Prompt for a transition for the given status.
+
+        :param task: A task to get a transition for.
+        :param status: A status to filter transitions by.
+        """
+        issue = self.issue
+
+        try:
+            self.issue = task
+            ret_val = self.get_transition(status)
+        finally:
+            self.issue = issue
+
+        return ret_val
+
     def _set_task(self, task, checked):
         """Task mutator.
 
@@ -511,14 +527,16 @@ class TasksCommand(BaseTasksCommand, JiraCommand):
         else:
             status = Issue.STATUS_NEW
 
-        (transition, resolution) = self.get_transition(status)
+        (transition, resolution) = self._get_transition(task, status)
 
         return self.jira.set_issue_transition(task, transition, resolution)
 
     def execute(self):
         """Execute this tasks command.
         """
-        self.namespace.check = self.namespace.indeterminate
+        if self.namespace.indeterminate:
+            self.namespace.check = self.namespace.indeterminate
+
         super(TasksCommand, self).execute()
 
     def finalize(self):
