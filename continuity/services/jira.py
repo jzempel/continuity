@@ -51,14 +51,21 @@ class Issue(IDObject):
     """JIRA issue object.
     """
 
-    STATUS_COMPLETE = "Complete"
-    STATUS_IN_PROGRESS = "In Progress"
-    STATUS_NEW = "New"
+    STATUS_COMPLETE = "done"
+    STATUS_IN_PROGRESS = "indeterminate"
+    STATUS_NEW = "new"
+    STATUS_UNDEFINED = "undefined"
 
     def __str__(self):
         """Issue string representation.
         """
         return self.summary
+
+    @property
+    def _status_category(self):
+        """Issue status category accessor.
+        """
+        return self.fields.get("status", {}).get("statusCategory", {})
 
     @property
     def assignee(self):
@@ -124,10 +131,15 @@ class Issue(IDObject):
 
     @property
     def status(self):
-        """Issue status category accessor.
+        """Issue status key accessor.
         """
-        return self.fields.get("status", {}).get("statusCategory", {}).get(
-            "name")
+        return self._status_category.get("key")
+
+    @property
+    def status_name(self):
+        """Issue status name accessor.
+        """
+        return self._status_category.get("name")
 
     @property
     def summary(self):
@@ -210,6 +222,12 @@ class Transition(IDObject):
         return self.name
 
     @property
+    def _status_category(self):
+        """Transition status category accessor.
+        """
+        return self.data.get("to", {}).get("statusCategory", {})
+
+    @property
     def description(self):
         """Transition description accessor.
         """
@@ -258,10 +276,15 @@ class Transition(IDObject):
 
     @property
     def status(self):
-        """Transition status category accessor.
+        """Transition status key accessor.
         """
-        return self.data.get("to", {}).get("statusCategory", {}).get(
-            "name")
+        return self._status_category.get("key")
+
+    @property
+    def status_name(self):
+        """Transition status name accessor.
+        """
+        return self._status_category.get("name")
 
 
 class User(DataObject):

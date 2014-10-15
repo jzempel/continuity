@@ -283,8 +283,8 @@ class IssuesCommand(JiraCommand):
             if issue.priority:
                 detail = "{0} ({1})".format(detail, issue.priority.lower())
 
-            if issue.status:
-                detail = "{0} [{1}]".format(detail, issue.status.upper())
+            if issue.status_name:
+                detail = "{0} [{1}]".format(detail, issue.status_name.upper())
 
             information = issue.summary
 
