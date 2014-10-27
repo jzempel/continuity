@@ -9,7 +9,7 @@
     :license: BSD, see LICENSE for more details.
 """
 
-from clint.textui import puts
+from clint.textui import puts as _puts
 from curses.ascii import ctrl, CR, EOT, ETX, isctrl, LF
 from getch.getch import getch
 from getpass import getpass
@@ -20,8 +20,9 @@ from pydoc import pipepager
 from shlex import split
 from StringIO import StringIO
 from subprocess import CalledProcessError, check_call
-from sys import exit
+from sys import exit, stdout
 from tempfile import NamedTemporaryFile
+from unicodedata import normalize
 
 
 def confirm(message, default=False):
@@ -84,7 +85,7 @@ def less(text):
     if isinstance(text, StringIO):
         text = text.getvalue()
 
-    pipepager(text, cmd="less -FRSX")
+    pipepager(to_ascii(text), cmd="less -FRSX")
 
 
 def prompt(message, default=None, characters=None, echo=True):
@@ -138,6 +139,16 @@ def prompt(message, default=None, characters=None, echo=True):
     return ret_val
 
 
+def puts(string='', newline=True, stream=stdout.write):
+    """Print the given string.
+
+    :param string: Default `''`. The string to print.
+    :param newline: Default `True`. Add a newline to the output.
+    :param stream: Default `stdout`. The stream to print to.
+    """
+    _puts(to_ascii(string), newline, stream)
+
+
 def render(template, **context):
     """Render the given template.
 
@@ -177,3 +188,14 @@ def render(template, **context):
         exit(message)
 
     return template.render(context)
+
+
+def to_ascii(string):
+    """Convert the given string to ASCII.
+
+    :param string: The string to convert.
+    """
+    if not isinstance(string, unicode):
+        string = unicode(string, "utf-8")
+
+    return normalize("NFKD", string).encode("ascii", "ignore")

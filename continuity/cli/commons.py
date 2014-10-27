@@ -9,9 +9,9 @@
     :license: BSD, see LICENSE for more details.
 """
 
-from .utils import confirm, prompt, render
+from .utils import confirm, prompt, puts, render, to_ascii
 from argparse import REMAINDER, SUPPRESS
-from clint.textui import colored, indent, puts, puts_err
+from clint.textui import colored, indent, puts_err
 from continuity.services.commons import ServiceException
 from continuity.services.git import GitException, GitService
 from continuity.services.github import (GitHubException,
@@ -654,7 +654,7 @@ class StartCommand(GitCommand):
 
         if self.namespace.force or branch == self.branch.name:
             name = prompt(MESSAGES["git_branch"])
-            ret_val = '-'.join(name.split())
+            ret_val = '-'.join(to_ascii(name).split())
             prefix = self.get_template("branch-prefix")
 
             if prefix and not ret_val.startswith(prefix):
