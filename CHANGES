@@ -1,6 +1,11 @@
 Changelog
 ---------
 
+Version 0.9.7
+~~~~~~~~~~~~~
+
+* Fixed JIRA `issues --myissues` query.
+
 Version 0.9.6
 ~~~~~~~~~~~~~
 

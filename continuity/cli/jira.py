@@ -270,7 +270,7 @@ class IssuesCommand(JiraCommand):
         status = [Issue.STATUS_NEW, Issue.STATUS_IN_PROGRESS]
 
         if self.namespace.myissues:
-            issues = self.get_issues(status, assignee="currentUser()")
+            issues = self.get_issues(status, assignee=self.user.name)
         else:
             issues = self.get_issues(status)
 
