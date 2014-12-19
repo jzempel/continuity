@@ -15,12 +15,12 @@ from sys import argv
 import continuity
 
 install_requires = [
-    "clint == 0.3.7",
-    "GitPython == 0.3.2.RC1",
+    "clint == 0.4.1",
+    "GitPython == 0.3.2.1",
     "Jinja2 == 2.7.3",
     "py-getch == 0.0.1",
     "python-dateutil < 2.0",
-    "requests == 2.4.1",
+    "requests == 2.5.0",
     "Sphinx == 1.2.3"
 ]
 

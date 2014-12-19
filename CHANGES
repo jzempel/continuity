@@ -5,6 +5,7 @@ Version 0.9.7
 ~~~~~~~~~~~~~
 * Fixed JIRA `issues --myissues` query.
 * Improved handling for unicode strings.
+* Update installation dependencies.
 
 Version 0.9.6
 ~~~~~~~~~~~~~
