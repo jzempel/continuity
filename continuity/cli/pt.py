@@ -12,8 +12,8 @@
 from .commons import (FinishCommand as BaseFinishCommand, GitCommand,
         ReviewCommand as BaseReviewCommand, StartCommand as BaseStartCommand,
         TasksCommand as BaseTasksCommand)
-from .utils import edit, less, prompt
-from clint.textui import colored, indent, puts
+from .utils import edit, less, prompt, puts
+from clint.textui import colored, indent
 from continuity.services.pt import PivotalTrackerService, Story
 from continuity.services.utils import cached_property
 from StringIO import StringIO
@@ -121,9 +121,9 @@ class BacklogCommand(PivotalTrackerCommand):
                         if member in story.owners:
                             initials.append(member.initials)
 
-                    name = "{0} ({1})".format(story.name, ', '.join(initials))
+                    name = u"{0} ({1})".format(story.name, ', '.join(initials))
 
-                message = "{0} {1}: {2}\n".format(id, type, name)
+                message = u"{0} {1}: {2}\n".format(id, type, name)
                 output.write(message)
 
         less(output)
@@ -212,7 +212,7 @@ class StartCommand(BaseStartCommand, PivotalTrackerCommand):
             if not self.namespace.ignore:
                 state = ','.join(self.states(True))
                 filter = "id:{0} owner:{1} state:{2} -estimate:-1".format(
-                    self.namespace.id, self.owner, state)
+                    self.namespace.id, self.owner.id, state)
 
                 if self.pt.get_story(self.project, filter):
                     ret_val = "{0}\nUse -i to ignore the state on stories assigned to you.".\
@@ -241,7 +241,7 @@ class StartCommand(BaseStartCommand, PivotalTrackerCommand):
         """Execute this start command.
         """
         if self.story:
-            puts("Story: {0}".format(self.story.name))
+            puts(u"Story: {0}".format(self.story.name))
 
             if not self.story.owners:
                 self.story = self.pt.set_story(self.project, self.story,
@@ -288,18 +288,18 @@ class StartCommand(BaseStartCommand, PivotalTrackerCommand):
         state = ','.join(self.states(self.namespace.ignore))
 
         if story_id and exclusive:
-            puts("Retrieving story #{0} from Pivotal Tracker for {1}...".
+            puts(u"Retrieving story #{0} from Pivotal Tracker for {1}...".
                 format(story_id, self.owner))
             filter = "id:{0} owner:{1} state:{2} -estimate:-1".format(
-                story_id, self.owner, state)
+                story_id, self.owner.id, state)
         elif story_id:
             puts("Retrieving story #{0} from Pivotal Tracker...".format(
                 story_id))
             filter = "id:{0} state:{1} -estimate:-1".format(story_id, state)
         elif exclusive:
-            puts("Retrieving next story from Pivotal Tracker for {0}...".
+            puts(u"Retrieving next story from Pivotal Tracker for {0}...".
                 format(self.owner))
-            filter = "owner:{0} state:{1} -estimate:-1".format(self.owner,
+            filter = "owner:{0} state:{1} -estimate:-1".format(self.owner.id,
                 state)
         else:
             filter = None
@@ -358,7 +358,7 @@ class StoryCommand(PivotalTrackerCommand):
             puts(colored.cyan(self.story.description))
 
         puts()
-        puts(colored.white("Requested by {0} on {1}".format(
+        puts(colored.white(u"Requested by {0} on {1}".format(
             self.story.requester,
             self.story.created.strftime("%d %b %Y, %I:%M%p"))))
         puts(colored.white(self.story.url))
@@ -368,7 +368,7 @@ class StoryCommand(PivotalTrackerCommand):
 
             for comment in comments:
                 puts()
-                puts(colored.yellow("{0} ({1})".format(comment.author,
+                puts(colored.yellow(u"{0} ({1})".format(comment.author,
                     comment.created)))
                 puts()
                 puts(comment.text)
@@ -396,6 +396,6 @@ class TasksCommand(BaseTasksCommand, PivotalTrackerCommand):
         """
         for task in self.tasks:
             checkmark = 'x' if task.is_checked else ' '
-            message = "[{0}] {1}. {2}".format(checkmark, task.number,
+            message = u"[{0}] {1}. {2}".format(checkmark, task.number,
                     task.description)
             puts(message)

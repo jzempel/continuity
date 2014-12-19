@@ -12,8 +12,8 @@
 from .commons import (FinishCommand as BaseFinishCommand, GitCommand,
         ReviewCommand as BaseReviewCommand, StartCommand as BaseStartCommand,
         TasksCommand as BaseTasksCommand)
-from .utils import edit, less, prompt
-from clint.textui import colored, indent, puts
+from .utils import edit, less, prompt, puts
+from clint.textui import colored, indent
 from continuity.services.jira import Issue, JiraException, JiraService
 from continuity.services.utils import cached_property
 from StringIO import StringIO
@@ -247,7 +247,7 @@ class IssueCommand(JiraCommand):
                 puts(colored.yellow("{0} ({1})".format(
                     comment.author.name, comment.created)))
                 puts()
-                puts(str(comment))
+                puts(comment)
 
 
 class IssuesCommand(JiraCommand):

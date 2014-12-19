@@ -3,8 +3,8 @@ Changelog
 
 Version 0.9.7
 ~~~~~~~~~~~~~
-
 * Fixed JIRA `issues --myissues` query.
+* Improved handling for unicode strings.
 
 Version 0.9.6
 ~~~~~~~~~~~~~

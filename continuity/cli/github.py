@@ -13,8 +13,8 @@ from .commons import (FinishCommand as BaseFinishCommand,
         GitHubCommand as BaseGitHubCommand,
         ReviewCommand as BaseReviewCommand, StartCommand as BaseStartCommand,
         TasksCommand as BaseTasksCommand)
-from .utils import less
-from clint.textui import colored, puts
+from .utils import less, puts
+from clint.textui import colored
 from continuity.services.github import Issue
 from continuity.services.utils import cached_property
 from StringIO import StringIO
@@ -133,7 +133,7 @@ class IssueCommand(GitHubCommand):
                 puts(colored.yellow("{0} ({1})".format(
                     comment.user.login, comment.created)))
                 puts()
-                puts(str(comment))
+                puts(comment)
 
 
 class IssuesCommand(GitHubCommand):
