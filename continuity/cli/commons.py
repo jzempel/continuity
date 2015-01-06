@@ -87,7 +87,7 @@ class GitCommand(BaseCommand):
                 puts("fatal: unable to access remote.")
                 self.exit()
             except (KeyboardInterrupt, EOFError):
-                raise
+                raise KeyboardInterrupt
         except KeyboardInterrupt:
             puts()
             self.exit()
