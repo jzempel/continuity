@@ -1,8 +1,14 @@
 Changelog
 ---------
 
+Version 0.9.8
+~~~~~~~~~~~~~
+
+* Fixed keyboard interrupt.
+
 Version 0.9.7
 ~~~~~~~~~~~~~
+
 * Fixed JIRA `issues --myissues` query.
 * Improved handling for unicode strings.
 * Update installation dependencies.

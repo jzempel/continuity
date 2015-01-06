@@ -81,11 +81,14 @@ class GitCommand(BaseCommand):
         self.branch = self.git.branch
 
         try:
-            self.execute()
-        except (ConnectionError, ServiceException):
-            puts("fatal: unable to access remote.")
-            self.exit()
-        except (KeyboardInterrupt, EOFError):
+            try:
+                self.execute()
+            except (ConnectionError, ServiceException):
+                puts("fatal: unable to access remote.")
+                self.exit()
+            except (KeyboardInterrupt, EOFError):
+                raise
+        except KeyboardInterrupt:
             puts()
             self.exit()
 
