@@ -44,7 +44,7 @@ clean:
 	rm -f logdict*.final.*.log
 
 release:
-	git tag $(VERSION)
+	git tag -f $(VERSION)
 	git push --tags
 	$(PYTHON) setup.py develop
 	$(PYTHON) setup.py build_sphinx
