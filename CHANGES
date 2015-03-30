@@ -1,6 +1,11 @@
 Changelog
 ---------
 
+Version 0.9.11
+~~~~~~~~~~~~~~
+
+* Revert Python requests version for PyInstaller compatibility.
+
 Version 0.9.10
 ~~~~~~~~~~~~~~
 
