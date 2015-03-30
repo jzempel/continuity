@@ -1,6 +1,11 @@
 Changelog
 ---------
 
+Version 0.9.10
+~~~~~~~~~~~~~~
+
+* Fixed 'issues --comments' output.
+
 Version 0.9.9
 ~~~~~~~~~~~~~
 
@@ -14,7 +19,7 @@ Version 0.9.8
 Version 0.9.7
 ~~~~~~~~~~~~~
 
-* Fixed JIRA `issues --myissues` query.
+* Fixed JIRA 'issues --myissues' query.
 * Improved handling for unicode strings.
 * Update installation dependencies.
 
