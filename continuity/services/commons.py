@@ -11,6 +11,7 @@
 
 from json import dumps
 from requests import codes, request
+from requests.exceptions import SSLError
 from requests.packages.urllib3 import disable_warnings
 from urlparse import urljoin
 
@@ -69,18 +70,32 @@ class RemoteService(object):
         :raises: `RequestException` if there was a problem with the request.
         """
         url = urljoin(self.url, resource)
-        kwargs["verify"] = False
 
         if "data" in kwargs:
             kwargs["data"] = dumps(kwargs["data"])
 
-        response = request(method, url, **kwargs)
+        response = self.get_response(method, url, **kwargs)
         response.raise_for_status()
 
         if response.status_code == codes.no_content:
             ret_val = None
         else:
             ret_val = response.json()
+
+        return ret_val
+
+    @staticmethod
+    def get_response(method, url, **kwargs):
+        """Get a request response.
+
+        :param method: The HTTP method.
+        :param url: The request URL.
+        :param kwargs: Request keyword-arguments.
+        """
+        try:
+            ret_val = request(method, url, **kwargs)
+        except SSLError:
+            ret_val = request(method, url, verify=False, **kwargs)
 
         return ret_val
 
