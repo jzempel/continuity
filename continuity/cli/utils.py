@@ -196,6 +196,9 @@ def to_ascii(string):
     :param string: The string to convert.
     """
     if not isinstance(string, unicode):
-        string = unicode(str(string), "utf-8")
+        if isinstance(string, str):
+            string = unicode(string, "utf-8")
+        else:
+            string = unicode(string)
 
     return normalize("NFKD", string).encode("ascii", "ignore")
