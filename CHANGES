@@ -5,6 +5,7 @@ Version 0.9.10
 ~~~~~~~~~~~~~~
 
 * Fixed 'issues --comments' output.
+* Remove git service repo override.
 
 Version 0.9.9
 ~~~~~~~~~~~~~

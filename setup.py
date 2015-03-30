@@ -16,12 +16,12 @@ import continuity
 
 install_requires = [
     "clint == 0.4.1",
-    "GitPython == 0.3.2.1",
+    "GitPython == 0.3.6",
     "Jinja2 == 2.7.3",
     "py-getch == 0.0.1",
     "python-dateutil < 2.0",
     "requests == 2.5.0",
-    "Sphinx == 1.2.3"
+    "Sphinx == 1.3.1"
 ]
 
 if "develop" in argv:
