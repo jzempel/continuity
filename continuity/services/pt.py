@@ -11,7 +11,7 @@
 
 from .commons import IDObject, RemoteService, ServiceException
 from .utils import cached_property, datetime_property
-from requests import get, RequestException
+from requests import RequestException
 from urlparse import urljoin
 
 
@@ -414,7 +414,7 @@ class PivotalTrackerService(RemoteService):
         """
         url = urljoin(PivotalTrackerService.URI, "me")
         auth = (user, password)
-        response = get(url, auth=auth, verify=False)
+        response = PivotalTrackerService.get_response("get", url, auth=auth)
 
         try:
             response.raise_for_status()

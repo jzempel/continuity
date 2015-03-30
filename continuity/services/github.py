@@ -13,7 +13,7 @@ from __future__ import division
 from .commons import DataObject, IDObject, RemoteService, ServiceException
 from .utils import datetime_property
 from json import dumps
-from requests import codes, get, post, RequestException
+from requests import codes, RequestException
 from urlparse import urljoin
 import re
 
@@ -517,12 +517,13 @@ class GitHubService(RemoteService):
         }
         resource = "{0}/repos".format(entity)
         url = urljoin(GitHubService.URI, resource)
-        response = post(url, data=data, headers=headers, verify=False)
+        response = GitHubService.get_response("post", url, data=data,
+                headers=headers)
 
         if response.status_code == codes.unprocessable:  # already exists.
             resource = "/repos/{0}/{1}".format(owner, name)
             url = urljoin(GitHubService.URI, resource)
-            response = get(url, headers=headers, verify=False)
+            response = GitHubService.get_response("get", url, headers=headers)
         else:
             response.raise_for_status()
 
@@ -553,11 +554,12 @@ class GitHubService(RemoteService):
             headers["X-GitHub-OTP"] = code
 
         url = urljoin(GitHubService.URI, "authorizations")
-        response = post(url, auth=auth, data=data, headers=headers,
-                verify=False)
+        response = GitHubService.get_response("post", url, auth=auth,
+                data=data, headers=headers)
 
         if response.status_code == codes.unprocessable:  # already exists.
-            response = get(url, auth=auth, headers=headers, verify=False)
+            response = GitHubService.get_response("get", url, auth=auth,
+                    headers=headers)
             authorizations = response.json()
 
             for authorization in authorizations:

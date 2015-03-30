@@ -19,8 +19,8 @@ install_requires = [
     "GitPython == 0.3.6",
     "Jinja2 == 2.7.3",
     "py-getch == 0.0.1",
-    "python-dateutil < 2.0",
-    "requests == 2.5.0",
+    "python-dateutil == 2.4.1",
+    "requests == 2.6.0",
     "Sphinx == 1.3.1"
 ]
 

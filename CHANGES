@@ -6,6 +6,8 @@ Version 0.9.10
 
 * Fixed 'issues --comments' output.
 * Remove git service repo override.
+* Updated to verify API requests by default.
+* Update installation dependencies.
 
 Version 0.9.9
 ~~~~~~~~~~~~~
