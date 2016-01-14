@@ -2,7 +2,7 @@ prefix = /usr/local
 bindir = $(prefix)/bin
 sharedir = $(prefix)/share
 sysconfdir = $(prefix)/etc
-version = 2.1
+version = 3.1
 BUILD = build
 INSTALLER = pyinstaller-$(version)
 PYTHON = python
@@ -53,9 +53,9 @@ release:
 	openssl sha1 dist/continuity-$(VERSION).tar.gz
 
 $(BUILD)/dist/$(EXENAME): export PYTHONPATH = $(PYTHON_PATH)
-$(BUILD)/dist/$(EXENAME): export VERSIONER_PYTHON_PREFER_32_BIT = yes
 $(BUILD)/dist/$(EXENAME): $(BUILD) | $(INSTALLER)
-	arch -i386 $(PYTHON) $(INSTALLER)/pyinstaller.py -F main.py -n $(EXENAME) --distpath=$(BUILD)/dist --specpath=$(BUILD)
+	cd $(INSTALLER)/bootloader && $(PYTHON) waf distclean all
+	$(PYTHON) $(INSTALLER)/pyinstaller.py -F main.py -n $(EXENAME) --distpath=$(BUILD)/dist --specpath=$(BUILD)
 
 $(BUILD):
 	mkdir -p $(PYTHON_PATH)/
