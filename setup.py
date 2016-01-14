@@ -15,13 +15,13 @@ from sys import argv
 import continuity
 
 install_requires = [
-    "clint == 0.4.1",
-    "GitPython == 0.3.6",
-    "Jinja2 == 2.7.3",
-    "py-getch == 0.0.1",
-    "python-dateutil == 2.4.1",
-    "requests == 2.5.1",
-    "Sphinx == 1.3.1"
+    "clint == 0.5.1",
+    "GitPython == 1.0.1",
+    "Jinja2 == 2.8",
+    "py-getch == 1.0.1",
+    "python-dateutil == 2.4.2",
+    "requests == 2.9.1",
+    "Sphinx == 1.3.4"
 ]
 
 if "develop" in argv:
