@@ -21,7 +21,8 @@ install_requires = [
     "py-getch == 1.0.1",
     "python-dateutil == 2.4.2",
     "requests == 2.9.1",
-    "Sphinx == 1.3.4"
+    "Sphinx == 1.3.4",
+    "six == 1.10.0"
 ]
 
 if "develop" in argv:

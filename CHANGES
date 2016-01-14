@@ -1,6 +1,11 @@
 Changelog
 ---------
 
+Version 0.10.1
+~~~~~~~~~~~~~~
+
+* Added explicit 'six' installation dependency.
+
 Version 0.10.0
 ~~~~~~~~~~~~~~
 
