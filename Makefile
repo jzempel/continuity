@@ -50,7 +50,7 @@ release:
 	$(PYTHON) setup.py build_sphinx
 	$(PYTHON) setup.py upload_sphinx
 	$(PYTHON) setup.py sdist upload
-	openssl sha1 dist/continuity-$(VERSION).tar.gz
+	openssl dgst -sha256 dist/continuity-$(VERSION).tar.gz
 
 $(BUILD)/dist/$(EXENAME): export PYTHONPATH = $(PYTHON_PATH)
 $(BUILD)/dist/$(EXENAME): $(BUILD) | $(INSTALLER)
