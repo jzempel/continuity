@@ -203,14 +203,12 @@ class GitService(object):
         :param arguments: Default `None`. List of arguments to pass to
             git-merge.
         """
-        command = ["merge", name]
+        command = ["merge", name, "-e"]
 
         if arguments:
             command.extend(arguments)
 
         if message:
-            message = "{0} Merge branch '{1}' into {2}".format(message, name,
-                    self.branch.name)
             command.extend(["--no-ff", "-m", message])
 
         try:

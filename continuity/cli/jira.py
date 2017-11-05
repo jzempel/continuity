@@ -191,10 +191,11 @@ class FinishCommand(BaseFinishCommand, JiraCommand):
         else:
             self.transition = None
 
+        message = "Merge branch '{0}'".format(branch)
+
         if self.transition:
-            message = "{0} #{1}".format(self.issue.key, self.transition.slug)
-        else:
-            message = None
+            message = "{0} #{1} {2}".format(self.issue.key, self.transition.slug,
+                    message)
 
         self.git.merge_branch(branch, message, args)
 

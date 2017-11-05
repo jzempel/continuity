@@ -82,7 +82,13 @@ class FinishCommand(BaseFinishCommand, GitHubCommand):
         finally:
             self.git.get_branch(self.branch)
 
-        message = "[close #{0:d}]".format(self.issue.number)
+        if self.issue.pull_request:
+            message = "Merge pull request #{0:d} from {1}".format(
+                    self.issue.number, branch)
+        else:
+            message = "[close #{0:d}] Merge branch '{1}'".format(
+                    self.issue.number, branch)
+
         self.git.merge_branch(branch, message, args)
 
     def finalize(self):

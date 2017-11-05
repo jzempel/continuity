@@ -145,7 +145,8 @@ class FinishCommand(BaseFinishCommand, PivotalTrackerCommand):
         finally:
             self.git.get_branch(self.branch)
 
-        message = "[finish #{0:d}]".format(self.story.id)
+        message = "[finish #{0:d}] Merge branch '{1}'".format(self.story.id,
+                branch)
         self.git.merge_branch(branch, message, args)
 
     def finalize(self):
