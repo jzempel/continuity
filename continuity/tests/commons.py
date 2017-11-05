@@ -24,7 +24,7 @@ class InitCommandTestCase(ContinuityTestCase):
         self.assert_equal(configuration["tracker"], "github")
         self.assert_false(configuration["exclusive"])
         configuration = self.git.get_configuration("github")
-        self.assert_in("oauth-token", configuration)
+        self.assert_in("token", configuration)
         configuration = self.git.get_configuration("alias")
         self.assert_in("issue", configuration)
         self.assert_in("issues", configuration)
@@ -70,11 +70,11 @@ class InitCommandTestCase(ContinuityTestCase):
         """
         self.command("init", continuity_tracker='G')
         configuration = self.git.get_configuration("github")
-        token = configuration["oauth-token"]
+        token = configuration["token"]
         self.command("init --new", continuity_tracker='G',
-                github_oauth_token=None)
+                github_token=None)
         configuration = self.git.get_configuration("github")
-        self.assert_equal(token, configuration["oauth-token"])
+        self.assert_equal(token, configuration["token"])
 
     def test_refresh_pivotal(self):
         """init: refresh Pivotal Tracker configuration.

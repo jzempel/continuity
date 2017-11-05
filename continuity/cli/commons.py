@@ -31,8 +31,8 @@ MESSAGES = {
     "git_branch": "Enter branch name",
     "github_2fa_code": "GitHub two-factor authentication code",
     "github_exclusive": "Exclude issues not assigned to you?",
-    "github_oauth_token": "GitHub OAuth token",
     "github_password": "GitHub password",
+    "github_token": "GitHub OAuth token",
     "github_user": "GitHub user",
     "jira_password": "JIRA password",
     "jira_project_key": "JIRA project key",
@@ -182,7 +182,7 @@ class GitHubCommand(GitCommand):
     def github(self):
         """GitHub accessor.
         """
-        token = self.get_value("github", "oauth-token")
+        token = self.get_value("github", "token")
 
         return GitHubService(self.git, token)
 
@@ -355,7 +355,7 @@ class InitCommand(GitCommand):
         self.git.set_configuration("alias", **self.aliases)
 
         if self.pivotal:
-            github = GitHubService(self.git, self.github["oauth-token"])
+            github = GitHubService(self.git, self.github["token"])
             hooks = github.get_hooks()
 
             if hooks is not None:
@@ -449,10 +449,10 @@ class InitCommand(GitCommand):
         """Initialize github data.
         """
         configuration = self.git.get_configuration("github")
-        token = configuration.get("oauth-token")
+        token = configuration.get("token")
 
         if token and not self.namespace.new:
-            token = prompt(MESSAGES["github_oauth_token"], token)
+            token = prompt(MESSAGES["github_token"], token)
         else:
             user = prompt(MESSAGES["github_user"], configuration.get("user"))
             password = prompt(MESSAGES["github_password"], echo=False)
@@ -470,7 +470,7 @@ class InitCommand(GitCommand):
             if not token:
                 exit("Invalid GitHub credentials.")
 
-        return {"oauth-token": token}
+        return {"token": token}
 
     def initialize_jira(self):
         """Initialize jira data.

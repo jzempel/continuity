@@ -204,7 +204,7 @@ class ContinuityTestCase(TestCase):
         ]
         self.git.remove_configuration("alias", None, *options)
         self.git.remove_configuration("continuity")
-        self.git.remove_configuration("github", None, "oauth-token")
+        self.git.remove_configuration("github", None, "token")
         options = ["api-token", "email", "owner-id", "project-id"]
         self.git.remove_configuration("pivotal", None, *options)
         self.command_count = 0

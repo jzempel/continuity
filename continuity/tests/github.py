@@ -27,7 +27,7 @@ class GitHubCommandTestCase(ContinuityTestCase):
                 "continuity_integration_branch"]
         }
         self.git.set_configuration("continuity", **continuity)
-        github = {"oauth-token": self.github.token}
+        github = {"token": self.github.token}
         self.git.set_configuration("github", **github)
 
 
