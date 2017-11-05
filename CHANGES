@@ -1,6 +1,18 @@
 Changelog
 ---------
 
+Version 1.0.0
+~~~~~~~~~~~~~
+
+* Update to use `git.token` rather than `git.oauth-token` from git-config.
+* Improve pull request merge message.
+* Allow `git-finish` merge message edit before commit.
+
+Version 0.10.2
+~~~~~~~~~~~~~~
+
+* Updated to version 3.2 of PyInstaller.
+
 Version 0.10.1
 ~~~~~~~~~~~~~~
 
