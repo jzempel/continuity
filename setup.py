@@ -20,7 +20,7 @@ install_requires = [
     "Jinja2 == 2.8",
     "py-getch == 1.0.1",
     "python-dateutil == 2.4.2",
-    "requests == 2.9.1",
+    "requests == 2.20.0",
     "Sphinx == 1.3.4",
     "six == 1.10.0"
 ]
